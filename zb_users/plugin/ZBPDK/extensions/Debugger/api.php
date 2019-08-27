@@ -49,8 +49,8 @@ function get_interface_detail($interface_name = '', $func_name = '')
     } catch (ReflectionException $e) {
         return 'Exception: ' . $e->getMessage();
     }
-    $start    = $func->getStartLine() - 1;
-    $end      = $func->getEndLine() - 1;
+    $start = $func->getStartLine() - 1;
+    $end = $func->getEndLine() - 1;
     $filename = $func->getFileName();
     $str .= '<p><strong>Interface</strong>: ' . $interface_name . '</p>';
     $str .= '<p><strong>FilePath</strong>: ' . $filename . '</p>';

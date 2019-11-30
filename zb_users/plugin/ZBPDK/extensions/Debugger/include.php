@@ -141,7 +141,7 @@ function Output_Content_Debugger($is_admin)
     $enabled_plugin_num = substr_count($zbp->option['ZC_USING_PLUGIN_LIST'], '|') + 1;
 
     //开发模式
-    $debug_mode = $zbp->option['ZC_DEBUG_MODE'] ? '开启' : '关闭';
+    $debug_mode = $zbp->option['ZC_DEBUG_MODE'] ? '已开启' : '已关闭';
 
     $type = $is_admin ? '后台' : '前台';
 
@@ -163,12 +163,32 @@ function Output_Content_Debugger($is_admin)
     <div class="debug-body">
         <ul id="debug-content">
             <li>
-                <p><strong>页面执行时间</strong>：<span class="debug-data-label">' . $runtime . ' ms</span></p>
-                <p><strong>当前内存占用</strong>：<span class="debug-data-label">' . $memory_usage . '</span></p>
-                <p><strong>引用的文件数</strong>：<span class="debug-data-label">' . $include_count . '</span></p>
-                <p><strong>数据库查询数</strong>：<span class="debug-data-label">' . $sql_count . '</span></p>
-                <p><strong>启用的插件数</strong>：<span class="debug-data-label">' . $enabled_plugin_num . '</span></p>
-                <p><strong>开发模式</strong>：<span class="debug-data-label">' . $debug_mode . '</span></p>
+                <ul id="debug-side-tabs">
+                    <li>基本信息</li>
+                    <li>系统变量</li>
+                </ul>
+                <ul id="debug-side-content">
+                    <li>
+                        <p><strong>页面执行时间</strong>：<span class="debug-data-label">' . $runtime . ' ms</span></p>
+                        <p><strong>当前内存占用</strong>：<span class="debug-data-label">' . $memory_usage . '</span></p>
+                        <p><strong>引用的文件数</strong>：<span class="debug-data-label">' . $include_count . '</span></p>
+                        <p><strong>数据库查询数</strong>：<span class="debug-data-label">' . $sql_count . '</span></p>
+                        <p><strong>启用的插件数</strong>：<span class="debug-data-label">' . $enabled_plugin_num . '</span></p>
+                        <p><strong>开发模式状态</strong>：<span class="debug-data-label">' . $debug_mode . '</span></p>
+                    </li>
+                    <li>
+                        <select id="debug-main-var">
+                            <option value="">请选择...</option>
+                            <option value="zbp">$zbp</option>
+                            <option value="GLOBALS">$GLOBALS</option>
+                        </select>
+                        <select id="debug-sub-var">
+                            <option value="0">变量自身</option>
+                        </select>
+                        <input id="debug-var-submit" type="submit" value="查看">
+                        <pre id="debug-var-view" class="debug-pre">请选择变量及其属性/键值后，再点击查看按钮</pre>
+                    </li>
+                </ul>
             </li>
             <li>
                 <p><strong>请求地址</strong>: ' . $zbp->fullcurrenturl . '</p>

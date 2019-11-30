@@ -1,6 +1,11 @@
 /**
- * Debugger 
+ * Debugger
  */
+
+body {
+    overscroll-behavior: none; /* Prevent overscrolling */
+}
+
 .debug-container {
     display: none;
     position: fixed;
@@ -9,7 +14,6 @@
     left: 0;
     bottom: 0;
     background-color: #fefefe;
-    box-shadow: 0 -3px 5px #d0d0d0;
     width: 100%;
     height: 50%;
     overflow: hidden;
@@ -28,9 +32,22 @@
     padding: 0 38px 0 0;
     background-color: #efefef;
     height: 38px;
+    border-top: solid 1px #ccc;
+    border-bottom: solid 1px #ccc;
     line-height: 38px;
     overflow-x: auto;
     overflow-y: hidden;
+}
+
+.debug-header *,
+ul#debug-side-tabs *,
+.debug-plg-detail {
+    -webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
 }
 
 .debug-header::-webkit-scrollbar {
@@ -101,7 +118,7 @@ ul#debug-tabs li.debug-tab-on::after {
     line-height: 38px;
     text-align: center;
     position: absolute;
-    top: 0;
+    top: 1px;
     font-weight: bold;
 }
 
@@ -130,24 +147,22 @@ ul#debug-tabs li.debug-tab-on::after {
 
 .debug-body {
     position: absolute;
-    top: 38px;
+    top: 40px;
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 10px 15px;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 .debug-body::-webkit-scrollbar,
-ul#debug-content li::-webkit-scrollbar,
+ul#debug-content>li::-webkit-scrollbar,
 .debug-pre::-webkit-scrollbar {
     width: 10px;
     height: 10px;
 }
 
 .debug-body::-webkit-scrollbar-thumb,
-ul#debug-content li::-webkit-scrollbar-thumb,
+ul#debug-content>li::-webkit-scrollbar-thumb,
 .debug-pre::-webkit-scrollbar-thumb {
     border-radius: 5px;
     box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
@@ -155,11 +170,16 @@ ul#debug-content li::-webkit-scrollbar-thumb,
 }
 
 .debug-body::-webkit-scrollbar-track,
-ul#debug-content li::-webkit-scrollbar-track,
+ul#debug-content>li::-webkit-scrollbar-track,
 .debug-pre::-webkit-scrollbar-track {
     box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
     border-radius: 5px;
     background: #EDEDED;
+}
+
+ul#debug-content {
+    height: 100%;
+    position: relative;
 }
 
 ul#debug-content,
@@ -167,15 +187,90 @@ ul#debug-content li {
     list-style: none;
 }
 
-ul#debug-content li {
+ul#debug-content>li {
+    padding: 10px 15px;
     display: none;
-    width: 100%;
     height: 100%;
+    overflow: auto;
+}
+
+ul#debug-content>li:first-child {
+    align-items: stretch;
+    padding: 0;
+    overflow: hidden;
+}
+
+ul#debug-side-tabs,
+ul#debug-side-content {
+    flex-direction: row;
+    align-items: stretch;
+}
+
+ul#debug-side-tabs {
+    background-color: #EDEDED;
+    border-right: solid 1px #CCC;
+}
+
+ul#debug-side-tabs>li {
+    font-size: 14px;
+    border-bottom: solid 1px #CCC;
+    line-height: 35px;
+    text-align: center;
+    width: 100px;
+    cursor: pointer;
+}
+
+ul#debug-side-tabs li.debug-tab-on {
+    color: #fff;
+    background-color: #3a6ea5;
+}
+
+ul#debug-side-content>li {
+    padding: 10px 15px;
+    display: none;
+}
+
+select#debug-main-var,
+select#debug-sub-var,
+input#debug-var-submit {
+    padding: 0;
+    margin: 0;
+    height: 28px;
+    line-height: 28px;
+    font-size: 16px;
+    margin-right: 5px;
+}
+
+select#debug-main-var,
+select#debug-sub-var {
+    border: 1px solid #ccc;
+    background: #fff;
+}
+
+input#debug-var-submit {
+    color: #ffffff;
+    width: 60px;
+    background: #3a6ea5;
+    border: 1px solid #3399cc;
+}
+
+pre#debug-var-view {
+    position: absolute;
+    top: 45px;
+    right: 10px;
+    bottom: 0;
+    left: 115px;
+    overflow: auto;
 }
 
 #debug-content p,
 .debug-table p {
     line-height: 150%;
+}
+
+.debug-table,
+#debug-content p:last-child {
+    margin-bottom: 20px;
 }
 
 .debug-table,
@@ -242,8 +337,7 @@ ul#debug-content li {
     background-color: #eaeaea;
     padding: 10px;
     margin: 10px 0;
-    overflow: auto;
-    white-space: pre-wrap; 
+    white-space: pre-wrap;
     white-space: -moz-pre-wrap !important;
     white-space: -pre-wrap;
     white-space: -o-pre-wrap;
@@ -287,7 +381,7 @@ ul#debug-content li {
     background: #DDD;
 }
 
-/* 后台样式修复 */
+/* 后台样式兼容 */
 .debug-table.table_striped>tbody>tr:nth-of-type(odd) {
     background-color: #fff !important;
 }

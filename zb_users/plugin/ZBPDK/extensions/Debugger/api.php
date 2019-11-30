@@ -16,7 +16,6 @@ if (!$zbp->CheckRights('root')) {
     die();
 }
 
-//处理请求
 if ('GET' == strtoupper($_SERVER['REQUEST_METHOD']) && isset($_GET['action'])) {
     if ('detail' == $_GET['action']) {
         $res = get_interface_detail($_GET['interface'], $_GET['func']);
@@ -24,6 +23,37 @@ if ('GET' == strtoupper($_SERVER['REQUEST_METHOD']) && isset($_GET['action'])) {
             $res = '<p>' . $res . '</p><p>获取接口详情失败! </p><p><strong>interface</strong>: ' . $_GET['interface'] . '</p><p><strong>func</strong>:' . $_GET['func'] . '</p>';
         }
         echo json_msg(true, $res);
+    } elseif ('get_subvar' == $_GET['action']) {
+        $main_var = $_GET['main_var'];
+        $sub_vars = array();
+        $except_key = array('GLOBALS', 'main_var', 'sub_vars', 'key', 'value', 'except_key');
+        foreach ($$main_var as $key => $value) {
+            if (in_array($key, $except_key) || false !== stripos($key, 'Filter_')) {
+                continue;
+            }
+            $sub_vars[] = (string) $key;
+        }
+        echo json_msg(true, $sub_vars);
+    } elseif ('var_content' == $_GET['action']) {
+        $main_var = $_GET['main_var'];
+        $sub_var  = $_GET['sub_var'];
+        $variable = '';
+        if ('zbp' === $main_var) {
+            if ('0' === $sub_var) {
+                var_dump($$main_var);
+            } elseif (property_exists($$main_var, $sub_var)) {
+                var_dump($$main_var->$sub_var);
+            }
+            $variable = ob_get_clean();
+        } elseif ('GLOBALS' === $main_var) {
+            if ('0' === $sub_var) {
+                var_dump($$main_var);
+            } elseif (array_key_exists($sub_var, $$main_var)) {
+                var_dump($$main_var[$sub_var]);
+            }
+            $variable = ob_get_clean();
+        }
+        echo json_msg(true, htmlspecialchars($variable));
     } else {
         echo json_msg(false, '参数错误!');
     }

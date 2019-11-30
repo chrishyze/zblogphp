@@ -36,7 +36,7 @@ if ('GET' == strtoupper($_SERVER['REQUEST_METHOD']) && isset($_GET['action'])) {
         echo json_msg(true, $sub_vars);
     } elseif ('var_content' == $_GET['action']) {
         $main_var = $_GET['main_var'];
-        $sub_var  = $_GET['sub_var'];
+        $sub_var = $_GET['sub_var'];
         $variable = '';
         if ('zbp' === $main_var) {
             if ('0' === $sub_var) {
@@ -86,7 +86,7 @@ function get_interface_detail($interface_name = '', $func_name = '')
     $str .= '<p><strong>FilePath</strong>: ' . $filename . '</p>';
     $str .= '<p><strong>StartLine</strong>: ' . $start . '</p>';
     $str .= '<p><strong>EndLine</strong>: ' . $end . '</p>';
-    $str .= '<pre class="debug-pre"><code>' . htmlspecialchars(implode('', array_slice(file($filename), $start, $end - $start + 1))) . '</code></pre>';
+    $str .= '<pre class="debug-pre">' . htmlspecialchars(implode('', array_slice(file($filename), $start, $end - $start + 1))) . '</pre>';
 
     return $str;
 }

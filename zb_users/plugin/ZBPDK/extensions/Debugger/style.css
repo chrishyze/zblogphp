@@ -26,6 +26,8 @@ body {
 .debug-container,
 .debug-container * {
     box-sizing: content-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei", sans-serif;
+    font-size: 16px;
 }
 
 .debug-header {
@@ -252,6 +254,7 @@ input#debug-var-submit {
     width: 60px;
     background: #3a6ea5;
     border: 1px solid #3399cc;
+    cursor: pointer;
 }
 
 pre#debug-var-view {
@@ -271,6 +274,11 @@ pre#debug-var-view {
 .debug-table,
 #debug-content p:last-child {
     margin-bottom: 20px;
+}
+
+.debug-table thead th {
+    background-color: #ECECEC;
+    text-align: center;
 }
 
 .debug-table,
@@ -334,6 +342,7 @@ pre#debug-var-view {
 }
 
 .debug-pre {
+    font-family: monospace;
     background-color: #eaeaea;
     padding: 10px;
     margin: 10px 0;

@@ -82,10 +82,10 @@ function get_interface_detail($interface_name = '', $func_name = '')
     $start = $func->getStartLine() - 1;
     $end = $func->getEndLine() - 1;
     $filename = $func->getFileName();
-    $str .= '<p><strong>Interface</strong>: ' . $interface_name . '</p>';
-    $str .= '<p><strong>FilePath</strong>: ' . $filename . '</p>';
-    $str .= '<p><strong>StartLine</strong>: ' . $start . '</p>';
-    $str .= '<p><strong>EndLine</strong>: ' . $end . '</p>';
+    $str .= '<p><strong>接口</strong>: ' . $interface_name . '</p>';
+    $str .= '<p><strong>路径</strong>: ' . $filename . '</p>';
+    $str .= '<p><strong>起始行</strong>: ' . $start . '</p>';
+    $str .= '<p><strong>结束行</strong>: ' . $end . '</p>';
     $str .= '<pre class="debug-pre">' . htmlspecialchars(implode('', array_slice(file($filename), $start, $end - $start + 1))) . '</pre>';
 
     return $str;

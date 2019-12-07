@@ -5,7 +5,7 @@
  */
 $GLOBALS['zbpdk']->add_extension(array(
     'url'         => 'main.php',
-    'description' => '用于调试编辑器Api',
+    'description' => '用于调试编辑器前端脚本接口',
     'id'          => 'EditorApi',
 ));
 

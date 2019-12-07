@@ -50,18 +50,18 @@ require_once $blogpath . 'zb_system/admin/admin_top.php';
                 </tr>
                 <tr>
                     <td>
-                        <p><b>前台显示调试信息</b></p>
+                        <p><b>显示前台调试器</b></p>
                     </td>
                     <td>
                         <p><input id="show_in_front" name="show_in_front" class="checkbox" type="text" value="<?php echo $zbp->Config('ZBPDK_Debugger')->show_in_front; ?>"></p>
                     </td>
                     <td rowspan="2">
-                        <p><span class="note">启用后可以点击页面右下角的“调试信息”按钮打开调试器。</span></p>
+                        <p><span class="note">启用后可以点击页面右下角的“调试器”按钮打开调试器。</span></p>
                     </td>
                 </tr>
                 <tr>
                     <td>
-                        <p><b>后台显示调试信息</b></p>
+                        <p><b>显示后台调试器</b></p>
                     </td>
                     <td>
                         <p><input id="show_in_admin" name="show_in_admin" class="checkbox" type="text" value="<?php echo $zbp->Config('ZBPDK_Debugger')->show_in_admin; ?>"></p>

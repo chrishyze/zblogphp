@@ -79,7 +79,7 @@ function Record_Sql_Debugger($sql)
 }
 
 /**
- * 前台调试信息输出.
+ * 前台调试器输出.
  */
 function Output_Front_Debugger()
 {
@@ -90,7 +90,7 @@ function Output_Front_Debugger()
 }
 
 /**
- * 后台调试信息输出.
+ * 后台调试器输出.
  */
 function Output_Admin_Debugger()
 {
@@ -246,7 +246,7 @@ function Output_Content_Debugger($is_admin)
         </ul>
     </div>
 </div>
-<div id="debug-ctl-open">调试信息</div>
+<div id="debug-ctl-open">调试器</div>
 <style>
 @import url(' . $zbp->host . 'zb_users/plugin/ZBPDK/extensions/Debugger/style.css);
 </style>

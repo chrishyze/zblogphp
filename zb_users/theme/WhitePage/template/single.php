@@ -8,9 +8,11 @@
 			<h3 id="BlogSubTitle">{$subname}</h3>
 		</div>
 		<div id="divNavBar">
+<hr/>
 <ul>
 {$modules['navbar'].Content}
 </ul>
+<hr/>
 		</div>
 		<div id="divMain">
 {if $article.Type==ZC_POST_TYPE_ARTICLE}

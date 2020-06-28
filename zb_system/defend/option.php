@@ -1,10 +1,9 @@
 <?php
+
 /**
  * Z-Blog with PHP.
  *
- * @author
- * @copyright (C) RainbowSoft Studio
- *
+ * @author Z-BlogPHP Team
  * @version 2.0 2013-06-14
  */
 
@@ -43,6 +42,7 @@ return array(
     'ZC_MYSQL_PASSWORD'   => '',
     'ZC_MYSQL_NAME'       => '',
     'ZC_MYSQL_CHARSET'    => 'utf8',
+    'ZC_MYSQL_COLLATE'    => 'utf8_general_ci',
     'ZC_MYSQL_PRE'        => 'zbp_',
     'ZC_MYSQL_ENGINE'     => 'MyISAM',
     'ZC_MYSQL_PORT'       => '3306',
@@ -61,15 +61,12 @@ return array(
     'ZC_USING_PLUGIN_LIST' => '',
 
     // '-------------------------------全局配置-----------------------------------
-    'ZC_YUN_SITE'        => '',
     'ZC_BLOG_CLSID'      => '',
     'ZC_TIME_ZONE_NAME'  => 'Asia/Shanghai',
     'ZC_UPDATE_INFO_URL' => 'https://update.zblogcn.com/info/',
 
     // '固定域名,默认为false
     'ZC_PERMANENT_DOMAIN_ENABLE'     => false,
-    'ZC_PERMANENT_DOMAIN_REDIRECT'   => true,
-    'ZC_PERMANENT_DOMAIN_WITH_ADMIN' => false,
 
     //
     'ZC_DEBUG_MODE'         => false,
@@ -87,13 +84,14 @@ return array(
     'ZC_BLOG_PRODUCT_FULLHTML' => '',
 
     // '留言评论
-    'ZC_COMMENT_TURNOFF'       => false,
-    'ZC_COMMENT_VERIFY_ENABLE' => false,
-    'ZC_COMMENT_REVERSE_ORDER' => false,
-    'ZC_COMMENT_AUDIT'         => false,
+    'ZC_COMMENT_TURNOFF'           => false,
+    'ZC_COMMENT_VERIFY_ENABLE'     => false,
+    'ZC_COMMENT_REVERSE_ORDER'     => false,
+    'ZC_COMMENT_AUDIT'             => false,
+    'ZC_COMMENT_VALIDCMTKEY_ENABLE' => false,
 
     // '验证码
-    'ZC_VERIFYCODE_STRING' => 'ABCDEFGHKMNPRSTUVWXYZ123456789',
+    'ZC_VERIFYCODE_STRING' => 'ABCDEFGHKMNPRSTUVWXYZ23456789',
     'ZC_VERIFYCODE_WIDTH'  => 90,
     'ZC_VERIFYCODE_HEIGHT' => 30,
     'ZC_VERIFYCODE_FONT'   => 'zb_system/defend/arial.ttf',
@@ -120,9 +118,9 @@ return array(
     'ZC_EMOTICONS_FILESIZE' => '16',
 
     // '上传相关
-    'ZC_UPLOAD_FILETYPE' => 'jpg|gif|png|jpeg|bmp|psd|wmf|ico|rpm|deb|tar|gz|sit|7z|bz2|zip|rar|xml|xsl|svg|svgz|rtf|doc|docx|ppt|pptx|xls|xlsx|wps|chm|txt|pdf|mp3|mp4|avi|mpg|rm|ra|rmvb|mov|wmv|wma|swf|fla|torrent|apk|zba|gzba',
-
+    'ZC_UPLOAD_FILETYPE' => 'jpg|gif|png|jpeg|bmp|webp|psd|wmf|ico|rpm|deb|tar|gz|xz|sit|7z|bz2|zip|rar|xml|xsl|svg|svgz|rtf|doc|docx|ppt|pptx|xls|xlsx|wps|chm|txt|md|pdf|mp3|flac|ape|mp4|mkv|avi|mpg|rm|ra|rmvb|mov|wmv|wma|torrent|apk|json|zba|gzba',
     'ZC_UPLOAD_FILESIZE' => 2,
+    'ZC_UPLOAD_DIR_YEARMONTHDAY' => false,
 
     // '用户名,密码,评论长度等限制
     'ZC_USERNAME_MIN' => 3,
@@ -146,6 +144,7 @@ return array(
 
     // '自动摘要字数
     'ZC_ARTICLE_EXCERPT_MAX' => 250,
+    'ZC_ARTICLE_INTRO_WITH_TEXT' => true,
 
     // '侧栏评论最大字数
     'ZC_COMMENT_EXCERPT_MAX' => 20,
@@ -172,31 +171,34 @@ return array(
 
     'ZC_SEARCH_COUNT' => 20,
     'ZC_SEARCH_REGEX' => '{%host%}search.php?q={%q%}&page={%page%}',
+    'ZC_SEARCH_TYPE'  => 'list', // 1.6.0  single|list
 
     //首页，分类页，文章页，页面页的默认模板
     'ZC_INDEX_DEFAULT_TEMPLATE' => 'index',
     'ZC_POST_DEFAULT_TEMPLATE'  => 'single',
 
-    'ZC_SIDEBAR_ORDER' => 'calendar|controlpanel|catalog|searchpanel|comments|archives|favorite|link|misc',
-
+    'ZC_SIDEBAR_ORDER'  => 'calendar|controlpanel|catalog|searchpanel|comments|archives|favorite|link|misc',
     'ZC_SIDEBAR2_ORDER' => '',
-
     'ZC_SIDEBAR3_ORDER' => '',
-
     'ZC_SIDEBAR4_ORDER' => '',
-
     'ZC_SIDEBAR5_ORDER' => '',
+    'ZC_SIDEBAR6_ORDER' => '',
+    'ZC_SIDEBAR7_ORDER' => '',
+    'ZC_SIDEBAR8_ORDER' => '',
+    'ZC_SIDEBAR9_ORDER' => '',
+    //'ZC_SIDEBARS_DEFAULT'  => '{"1":"calendar|controlpanel|catalog|searchpanel|comments|archives|favorite|link|misc","2":"","3":"","4":"","5":"","6":"","7":"","8":"","9":""}';
+
     // '--------------------------其它----------------------------------------
     // '代码高亮
-    'ZC_SYNTAXHIGHLIGHTER_ENABLE' => true,
+    'ZC_SYNTAXHIGHLIGHTER_ENABLE' => false,
     // '源码编辑高亮
     'ZC_CODEMIRROR_ENABLE' => true,
 
     'ZC_GZIP_ENABLE'                 => false,
     'ZC_ADMIN_HTML5_ENABLE'          => true,
-    'ZC_LOADMEMBERS_LEVEL'           => 0,
+    'ZC_LOADMEMBERS_LEVEL'           => 1,
+    //ZC_LAST_VERSION 本意是指数据库对应的系统版本号，非当前系统未更新版本号
     'ZC_LAST_VERSION'                => '',
-    'ZC_HTTP_LASTMODIFIED'           => false,
     'ZC_MODULE_CATALOG_STYLE'        => 0,
     'ZC_MODULE_ARCHIVES_STYLE'       => 0,
     'ZC_VIEWNUMS_TURNOFF'            => false,
@@ -206,10 +208,12 @@ return array(
     'ZC_POST_ALIAS_USE_ID_NOT_TITLE' => false,
     'ZC_COMPATIBLE_ASP_URL'          => true,
     'ZC_LARGE_DATA'                  => false,
-    'ZC_JS_304_ENABLE'               => false,
     'ZC_VERSION_IN_HEADER'           => true,
     'ZC_ADDITIONAL_SECURITY'         => true,
     'ZC_XMLRPC_ENABLE'               => true,
+    'ZC_API_ENABLE'                  => true,
     'ZC_XMLRPC_USE_WEBTOKEN'         => false,
     'ZC_USING_CDN_GUESTIP_TYPE'      => 'REMOTE_ADDR',
+    'ZC_POST_BATCH_DELETE'           => false,
+    'ZC_JS_304_ENABLE'               => true,
 );

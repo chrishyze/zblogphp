@@ -8,24 +8,25 @@ if (!defined('ZBP_PATH')) {
  */
 class ModuleBuilder
 {
-    public static $List = array(); //array('filename'=>,'function' => '', 'paramters' => '');
+
     //需要重建的module list
     private static $Ready = array(); //'filename';
+
+    public static $List = array(); //array('filename'=>,'function' => '', 'paramters' => '');
 
     public static function Build()
     {
         global $zbp;
         foreach (self::$Ready as $m) {
             if (isset($zbp->modulesbyfilename[$m])) {
-                $m = $zbp->modulesbyfilename[$m];
-                $m->Build();
-                $m->Save();
+                $zbp->modulesbyfilename[$m]->Build();
+                $zbp->modulesbyfilename[$m]->Save();
             }
         }
     }
 
     /**
-     * 重建模块.
+     * 将模块注册进Ready重建列表.
      *
      * @param string $modfilename 模块名
      * @param string $userfunc    用户函数
@@ -33,30 +34,27 @@ class ModuleBuilder
     public static function Reg($modfilename, $userfunc)
     {
         self::$List[$modfilename]['filename'] = $modfilename;
-        if (function_exists($userfunc)) {
-            self::$List[$modfilename]['function'] = $userfunc;
-        } elseif (strpos($userfunc, '::') !== false) {
-            $a = explode('::', $userfunc);
-            if (method_exists($a[0], $a[1])) {
-                self::$List[$modfilename]['function'] = $userfunc;
-            }
-        }
+        self::$List[$modfilename]['function'] = $userfunc;
+        self::$List[$modfilename]['parameters'] = array();
     }
 
     /**
-     * 添加模块.
+     * 添加进Ready List模块.
      *
      * @param string $modfilename 模块名
      * @param null   $parameters  模块参数
      */
     public static function Add($modfilename, $parameters = null)
     {
+        $p = func_get_args();
         self::$Ready[$modfilename] = $modfilename;
-        self::$List[$modfilename]['parameters'] = $parameters;
+        array_shift($p);
+        $p = is_array($p) ? $p : array();
+        self::$List[$modfilename]['parameters'] = $p;
     }
 
     /**
-     * 删除模块.
+     * 删除进Ready List模块.
      *
      * @param string $modfilename 模块名
      */
@@ -72,7 +70,7 @@ class ModuleBuilder
      *
      * @return string 模块内容
      *
-     * @todo 必须重写
+     *
      */
     public static function Catalog()
     {
@@ -258,7 +256,7 @@ class ModuleBuilder
             return '';
         }
 
-        $ldate = array(date('Y', $array[0]['log_PostTime']), date('m', $array[0]['log_PostTime']));
+        $ldate = array(date('Y', $array[0][$zbp->datainfo['Post']['PostTime'][0]]), date('m', $array[0][$zbp->datainfo['Post']['PostTime'][0]]));
 
         $sql = $zbp->db->sql->Select($zbp->table['Post'], array('log_PostTime'), null, array('log_PostTime' => 'ASC'), array(1), null);
 
@@ -268,22 +266,22 @@ class ModuleBuilder
             return '';
         }
 
-        $fdate = array(date('Y', $array[0]['log_PostTime']), date('m', $array[0]['log_PostTime']));
+        $fdate = array(date('Y', $array[0][$zbp->datainfo['Post']['PostTime'][0]]), date('m', $array[0][$zbp->datainfo['Post']['PostTime'][0]]));
 
         $arraydate = array();
 
-        for ($i = $fdate[0]; $i < $ldate[0] + 1; $i++) {
+        for ($i = $fdate[0]; $i < ($ldate[0] + 1); $i++) {
             for ($j = 1; $j < 13; $j++) {
                 $arraydate[] = strtotime($i . '-' . $j);
             }
         }
 
         foreach ($arraydate as $key => $value) {
-            if ($value - strtotime($ldate[0] . '-' . $ldate[1]) > 0) {
+            if (($value - strtotime($ldate[0] . '-' . $ldate[1])) > 0) {
                 unset($arraydate[$key]);
             }
 
-            if ($value - strtotime($fdate[0] . '-' . $fdate[1]) < 0) {
+            if (($value - strtotime($fdate[0] . '-' . $fdate[1])) < 0) {
                 unset($arraydate[$key]);
             }
         }
@@ -533,4 +531,5 @@ class ModuleBuilder
 
         return $ret;
     }
+
 }

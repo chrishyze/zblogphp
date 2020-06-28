@@ -8,22 +8,39 @@ if (!defined('ZBP_PATH')) {
  */
 class Database__PDO_SQLite implements Database__Interface
 {
+
     public $type = 'sqlite';
+
     public $version = '3';
+
+    public $error = array();
 
     /**
      * @var string|null 数据库名前缀
      */
     public $dbpre = null;
+
     private $db = null; //数据库连接实例
+
     /**
      * @var string|null 数据库名
      */
     public $dbname = null;
+
     /**
      * @var DbSql|null DbSql实例
      */
     public $sql = null;
+
+    /**
+     * @var 字符集
+     */
+    public $charset = 'utf8';
+
+    /**
+     * @var 字符排序
+     */
+    public $collate = null;
 
     /**
      * 构造函数，实例化$sql参数.
@@ -50,10 +67,21 @@ class Database__PDO_SQLite implements Database__Interface
      */
     public function Open($array)
     {
-        $db_link = new PDO('sqlite:' . $array[0]);
+        //pdo_sqlite优先使用sqlite3
+        $a = PDO::getAvailableDrivers();
+        $dns = 'sqlite';
+        if (in_array('sqlite2', $a)) {
+            $dns = 'sqlite2';
+        }
+        if (in_array('sqlite', $a)) {
+            $dns = 'sqlite';
+        }
+        $db_link = new PDO($dns . ':' . $array[0]);
         $this->db = $db_link;
         $this->dbpre = $array[1];
         $this->dbname = $array[0];
+        $myver = $this->db->getAttribute(PDO::ATTR_SERVER_VERSION);
+        $this->version = SplitAndGet($myver, '-', 0);
 
         return true;
     }
@@ -86,6 +114,7 @@ class Database__PDO_SQLite implements Database__Interface
             $s = trim($s);
             if ($s != '') {
                 $this->db->exec($this->sql->Filter($s));
+                $this->LogsError();
             }
         }
     }
@@ -100,6 +129,11 @@ class Database__PDO_SQLite implements Database__Interface
         //$query=str_replace('%pre%', $this->dbpre, $query);
         // 遍历出来
         $results = $this->db->query($this->sql->Filter($query));
+        $e = trim($this->db->errorCode(), '0');
+        if ($e != null) {
+            trigger_error(implode(' ', $this->db->errorInfo()), E_USER_NOTICE);
+        }
+        $this->LogsError();
         //fetch || fetchAll
         if (is_object($results)) {
             return $results->fetchAll();
@@ -116,7 +150,9 @@ class Database__PDO_SQLite implements Database__Interface
     public function Update($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return $this->db->query($this->sql->Filter($query));
+        $r = $this->db->query($this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -127,7 +163,9 @@ class Database__PDO_SQLite implements Database__Interface
     public function Delete($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return $this->db->query($this->sql->Filter($query));
+        $r = $this->db->query($this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -139,7 +177,7 @@ class Database__PDO_SQLite implements Database__Interface
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
         $this->db->exec($this->sql->Filter($query));
-
+        $this->LogsError();
         return $this->db->lastInsertId();
     }
 
@@ -147,7 +185,7 @@ class Database__PDO_SQLite implements Database__Interface
      * @param $table
      * @param $datainfo
      */
-    public function CreateTable($table, $datainfo)
+    public function CreateTable($table, $datainfo, $engine = null, $charset = null, $collate = null)
     {
         $this->QueryMulit($this->sql->CreateTable($table, $datainfo));
     }
@@ -184,4 +222,13 @@ class Database__PDO_SQLite implements Database__Interface
             return false;
         }
     }
+
+    private function LogsError()
+    {
+        $e = trim($this->db->errorCode(), '0');
+        if ($e != null) {
+            $this->error[] = array($e, $this->db->errorInfo());
+        }
+    }
+
 }

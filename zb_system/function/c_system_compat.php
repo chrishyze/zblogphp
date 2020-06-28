@@ -1,6 +1,72 @@
 <?php
 
+/**
+ * < PHP 5.2.7.
+ */
+if (!defined('PHP_VERSION_ID')) {
+    $version = explode('.', PHP_VERSION);
+    define('PHP_VERSION_ID', ($version[0] * 10000 + $version[1] * 100 + $version[2]));
+    unset($version);
+}
+
+if (!function_exists('fnmatch')) {
+    define('FNM_PATHNAME', 1);
+    define('FNM_NOESCAPE', 2);
+    define('FNM_PERIOD', 4);
+    define('FNM_CASEFOLD', 16);
+
+    function fnmatch($pattern, $string, $flags = 0)
+    {
+        return pcre_fnmatch($pattern, $string, $flags);
+    }
+
+    function pcre_fnmatch($pattern, $string, $flags = 0)
+    {
+        $modifiers = null;
+        $transforms = array(
+            '\*'      => '.*',
+            '\?'      => '.',
+            '\[\!'    => '[^',
+            '\['      => '[',
+            '\]'      => ']',
+            '\.'      => '\.',
+            '\\'      => '\\\\',
+        );
+
+        // Forward slash in string must be in pattern:
+        if (($flags & FNM_PATHNAME)) {
+            $transforms['\*'] = '[^/]*';
+        }
+
+        // Back slash should not be escaped:
+        if (($flags & FNM_NOESCAPE)) {
+            unset($transforms['\\']);
+        }
+
+        // Perform case insensitive match:
+        if (($flags & FNM_CASEFOLD)) {
+            $modifiers .= 'i';
+        }
+
+        // Period at start must be the same as pattern:
+        if (($flags & FNM_PERIOD)) {
+            if (strpos($string, '.') === 0 && strpos($pattern, '.') !== 0) {
+                return false;
+            }
+        }
+
+        $pattern = '#^'
+            . strtr(preg_quote($pattern, '#'), $transforms)
+            . '$#'
+            . $modifiers;
+
+        return (bool) preg_match($pattern, $string);
+    }
+
+}
+
 if (!function_exists('hex2bin')) {
+
     function hex2bin($str)
     {
         $sbin = "";
@@ -11,9 +77,11 @@ if (!function_exists('hex2bin')) {
 
         return $sbin;
     }
+
 }
 
 if (!function_exists('rrmdir')) {
+
     function rrmdir($dir)
     {
         if (is_dir($dir)) {
@@ -47,6 +115,7 @@ if (!function_exists('rrmdir')) {
             }
         }
     }
+
 }
 
 /*
@@ -92,6 +161,7 @@ if (!defined('HTTP_URL_STRIP_ALL')) {
 }
 
 if (!function_exists('http_build_url')) {
+
     /**
      * Build a URL.
      *
@@ -116,12 +186,10 @@ if (!function_exists('http_build_url')) {
         isset($parts['query']) && is_string($parts['query']) || $parts['query'] = null;
         $keys = array('user', 'pass', 'port', 'path', 'query', 'fragment');
         // HTTP_URL_STRIP_ALL and HTTP_URL_STRIP_AUTH cover several other flags.
-        if ($flags & HTTP_URL_STRIP_ALL) {
-            $flags |= HTTP_URL_STRIP_USER | HTTP_URL_STRIP_PASS
-                | HTTP_URL_STRIP_PORT | HTTP_URL_STRIP_PATH
-                | HTTP_URL_STRIP_QUERY | HTTP_URL_STRIP_FRAGMENT;
-        } elseif ($flags & HTTP_URL_STRIP_AUTH) {
-            $flags |= HTTP_URL_STRIP_USER | HTTP_URL_STRIP_PASS;
+        if (($flags & HTTP_URL_STRIP_ALL)) {
+            $flags |= (HTTP_URL_STRIP_USER | HTTP_URL_STRIP_PASS | HTTP_URL_STRIP_PORT | HTTP_URL_STRIP_PATH | HTTP_URL_STRIP_QUERY | HTTP_URL_STRIP_FRAGMENT);
+        } elseif (($flags & HTTP_URL_STRIP_AUTH)) {
+            $flags |= (HTTP_URL_STRIP_USER | HTTP_URL_STRIP_PASS);
         }
         // Schema and host are alwasy replaced
         foreach (array('scheme', 'host') as $part) {
@@ -129,7 +197,7 @@ if (!function_exists('http_build_url')) {
                 $url[$part] = $parts[$part];
             }
         }
-        if ($flags & HTTP_URL_REPLACE) {
+        if (($flags & HTTP_URL_REPLACE)) {
             foreach ($keys as $key) {
                 if (isset($parts[$key])) {
                     $url[$key] = $parts[$key];
@@ -141,9 +209,9 @@ if (!function_exists('http_build_url')) {
                     // Workaround for trailing slashes
                     $url['path'] .= 'a';
                     $url['path'] = rtrim(
-                            str_replace(basename($url['path']), '', $url['path']),
-                            '/'
-                        ) . '/' . ltrim($parts['path'], '/');
+                        str_replace(basename($url['path']), '', $url['path']),
+                        '/'
+                    ) . '/' . ltrim($parts['path'], '/');
                 } else {
                     $url['path'] = $parts['path'];
                 }
@@ -168,7 +236,7 @@ if (!function_exists('http_build_url')) {
         }
         foreach ($keys as $key) {
             $strip = 'HTTP_URL_STRIP_' . strtoupper($key);
-            if ($flags & constant($strip)) {
+            if (($flags & constant($strip))) {
                 unset($url[$key]);
             }
         }
@@ -202,9 +270,11 @@ if (!function_exists('http_build_url')) {
 
         return $parsed_string;
     }
+
 }
 
 if (!function_exists('gzdecode')) {
+
     function gzdecode($data)
     {
         $len = strlen($data);
@@ -213,7 +283,7 @@ if (!function_exists('gzdecode')) {
         }
         $method = ord(substr($data, 2, 1));  // Compression method
          $flags = ord(substr($data, 3, 1));  // Flags
-        if ($flags & 31 != $flags) {
+        if (($flags & 31) != $flags) {
             // Reserved bits are set -- NOT ALLOWED by RFC 1952
             return;
         }
@@ -225,57 +295,57 @@ if (!function_exists('gzdecode')) {
         $headerlen = 10;
         $extralen = 0;
         $extra = "";
-        if ($flags & 4) {
+        if (($flags & 4)) {
             // 2-byte length prefixed EXTRA data in header
-            if ($len - $headerlen - 2 < 8) {
+            if (($len - $headerlen - 2) < 8) {
                 return false;    // Invalid format
             }
             $extralen = unpack("v", substr($data, 8, 2));
             $extralen = $extralen[1];
-            if ($len - $headerlen - 2 - $extralen < 8) {
+            if (($len - $headerlen - 2 - $extralen) < 8) {
                 return false;    // Invalid format
             }
             $extra = substr($data, 10, $extralen);
-            $headerlen += 2 + $extralen;
+            $headerlen += (2 + $extralen);
         }
 
         $filenamelen = 0;
         $filename = "";
-        if ($flags & 8) {
+        if (($flags & 8)) {
             // C-style string file NAME data in header
-            if ($len - $headerlen - 1 < 8) {
+            if (($len - $headerlen - 1) < 8) {
                 return false;    // Invalid format
             }
-            $filenamelen = strpos(substr($data, 8 + $extralen), chr(0));
-            if ($filenamelen === false || $len - $headerlen - $filenamelen - 1 < 8) {
+            $filenamelen = strpos(substr($data, (8 + $extralen)), chr(0));
+            if ($filenamelen === false || ($len - $headerlen - $filenamelen - 1) < 8) {
                 return false;    // Invalid format
             }
             $filename = substr($data, $headerlen, $filenamelen);
-            $headerlen += $filenamelen + 1;
+            $headerlen += ($filenamelen + 1);
         }
 
         $commentlen = 0;
         $comment = "";
-        if ($flags & 16) {
+        if (($flags & 16)) {
             // C-style string COMMENT data in header
-            if ($len - $headerlen - 1 < 8) {
+            if (($len - $headerlen - 1) < 8) {
                 return false;    // Invalid format
             }
-            $commentlen = strpos(substr($data, 8 + $extralen + $filenamelen), chr(0));
-            if ($commentlen === false || $len - $headerlen - $commentlen - 1 < 8) {
+            $commentlen = strpos(substr($data, (8 + $extralen + $filenamelen)), chr(0));
+            if ($commentlen === false || ($len - $headerlen - $commentlen - 1) < 8) {
                 return false;    // Invalid header format
             }
             $comment = substr($data, $headerlen, $commentlen);
-            $headerlen += $commentlen + 1;
+            $headerlen += ($commentlen + 1);
         }
 
         $headercrc = "";
-        if ($flags & 2) {
+        if (($flags & 2)) {
             // 2-bytes (lowest order) of CRC32 on header present
-            if ($len - $headerlen - 2 < 8) {
+            if (($len - $headerlen - 2) < 8) {
                 return false;    // Invalid format
             }
-            $calccrc = crc32(substr($data, 0, $headerlen)) & 0xffff;
+            $calccrc = (crc32(substr($data, 0, $headerlen)) & 0xffff);
             $headercrc = unpack("v", substr($data, $headerlen, 2));
             $headercrc = $headercrc[1];
             if ($headercrc != $calccrc) {
@@ -291,7 +361,7 @@ if (!function_exists('gzdecode')) {
         $isize = $isize[1];
 
         // Perform the decompression:
-        $bodylen = $len - $headerlen - 8;
+        $bodylen = ($len - $headerlen - 8);
         if ($bodylen < 1) {
             // This should never happen - IMPLEMENTATION BUG!
             return;
@@ -324,9 +394,11 @@ if (!function_exists('gzdecode')) {
 
         return $data;
     }
+
 }
 
 if (!function_exists('session_status')) {
+
     function session_status()
     {
         if (!extension_loaded('session')) {
@@ -337,11 +409,14 @@ if (!function_exists('session_status')) {
             return 2;
         }
     }
+
 }
 
 if (!function_exists('array_replace_recursive')) {
+
     function array_replace_recursive($array, $array1)
     {
+
         function recurse($array, $array1)
         {
             foreach ($array1 as $key => $value) {
@@ -371,7 +446,57 @@ if (!function_exists('array_replace_recursive')) {
                 $array = recurse($array, $args[$i]);
             }
         }
-
         return $array;
     }
+
+}
+
+
+if (!function_exists('hash_equals')) {
+
+    /**
+     * Timing attack safe string comparison
+     *
+     * Compares two strings using the same time whether they're equal or not.
+     * This function should be used to mitigate timing attacks; for instance, when testing crypt() password hashes.
+     *
+     * @param string $known_string The string of known length to compare against
+     * @param string $user_string The user-supplied string
+     * @return boolean Returns TRUE when the two strings are equal, FALSE otherwise.
+     */
+    function hash_equals($known_string, $user_string)
+    {
+        if (func_num_args() !== 2) {
+            // handle wrong parameter count as the native implentation
+            trigger_error('hash_equals() expects exactly 2 parameters, ' . func_num_args() . ' given', E_USER_WARNING);
+            return null;
+        }
+        if (is_string($known_string) !== true) {
+            trigger_error('hash_equals(): Expected known_string to be a string, ' . gettype($known_string) . ' given', E_USER_WARNING);
+            return false;
+        }
+        $known_string_len = strlen($known_string);
+        $user_string_type_error = 'hash_equals(): Expected user_string to be a string, ' . gettype($user_string) . ' given'; // prepare wrong type error message now to reduce the impact of string concatenation and the gettype call
+        if (is_string($user_string) !== true) {
+            trigger_error($user_string_type_error, E_USER_WARNING);
+            // prevention of timing attacks might be still possible if we handle $user_string as a string of diffent length (the trigger_error() call increases the execution time a bit)
+            $user_string_len = strlen($user_string);
+            $user_string_len = $known_string_len + 1;
+        } else {
+            $user_string_len = $known_string_len + 1;
+            $user_string_len = strlen($user_string);
+        }
+        if ($known_string_len !== $user_string_len) {
+            $res = $known_string ^ $known_string; // use $known_string instead of $user_string to handle strings of diffrent length.
+            $ret = 1; // set $ret to 1 to make sure false is returned
+        } else {
+            $res = $known_string ^ $user_string;
+            $ret = 0;
+        }
+        for ($i = strlen($res) - 1; $i >= 0; $i--) {
+            $ret |= ord($res[$i]);
+        }
+        return $ret === 0;
+    }
+
 }

@@ -10,29 +10,48 @@ if (!defined('ZBP_PATH')) {
  */
 class Network__curl implements Network__Interface
 {
+
     private $readyState = 0; //状态
+
     private $responseBody = null; //返回的二进制
+
     private $responseStream = null; //返回的数据流
+
     private $responseText = ''; //返回的数据
+
     private $responseXML = null; //尝试把responseText格式化为XMLDom
+
     private $status = 0; //状态码
+
     private $statusText = ''; //状态码文本
+
     private $responseVersion = ''; //返回的HTTP版体
 
     private $option = array();
+
     private $url = '';
+
     private $postdata = array();
+
     private $httpheader = array();
+
     private $responseHeader = array();
+
     private $parsed_url = array();
+
     private $timeout = 30;
+
     private $errstr = '';
+
     private $errno = 0;
+
     private $ch = null;
+
     private $isgzip = false;
+
     private $maxredirs = 0;
 
-    private $__isBinary = false;
+    private $private_isBinary = false;
 
     /**
      * @ignore
@@ -64,14 +83,15 @@ class Network__curl implements Network__Interface
             $w = new DOMDocument();
 
             return $w->loadXML($this->responseText);
-        } elseif (strtolower($property_name) == 'scheme' ||
-            strtolower($property_name) == 'host' ||
-            strtolower($property_name) == 'port' ||
-            strtolower($property_name) == 'user' ||
-            strtolower($property_name) == 'pass' ||
-            strtolower($property_name) == 'path' ||
-            strtolower($property_name) == 'query' ||
-            strtolower($property_name) == 'fragment') {
+        } elseif (strtolower($property_name) == 'scheme'
+            || strtolower($property_name) == 'host'
+            || strtolower($property_name) == 'port'
+            || strtolower($property_name) == 'user'
+            || strtolower($property_name) == 'pass'
+            || strtolower($property_name) == 'path'
+            || strtolower($property_name) == 'query'
+            || strtolower($property_name) == 'fragment'
+        ) {
             if (isset($this->parsed_url[strtolower($property_name)])) {
                 return $this->parsed_url[strtolower($property_name)];
             } else {
@@ -150,6 +170,7 @@ class Network__curl implements Network__Interface
 
         curl_setopt($this->ch, CURLOPT_URL, $bstrUrl);
         curl_setopt($this->ch, CURLOPT_HEADER, 1);
+
         curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, 1);
         //curl_setopt($this->ch, CURLOPT_REFERER, 'http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI']);
         curl_setopt($this->ch, CURLOPT_POST, ($method == 'POST' ? 1 : 0));
@@ -185,23 +206,28 @@ class Network__curl implements Network__Interface
         curl_setopt($this->ch, CURLOPT_HTTPHEADER, $this->httpheader);
 
         if ($this->option['method'] == 'POST') {
-            if ($data == '') {
-                $data = $this->postdata;
+            if (is_string($varBody) && count($this->postdata) > 0) {
+                parse_str($varBody, $data);
+                $data = ($data + $this->postdata);
+            } elseif (is_array($varBody) && count($this->postdata) > 0) {
+                $data = ($varBody + $this->postdata);
             }
-            if ($this->__isBinary) {
+            if ($this->private_isBinary) {
                 curl_setopt($this->ch, CURLOPT_CUSTOMREQUEST, 'POST');
             } else {
                 curl_setopt($this->ch, CURLOPT_POST, 1);
             }
             curl_setopt($this->ch, CURLOPT_POSTFIELDS, $data);
+        } else {
+            curl_setopt($this->ch, CURLOPT_CUSTOMREQUEST, $this->option['method']);
         }
 
         curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
 
         if ($this->maxredirs > 0) {
-            if (ini_get("safe_mode") == false && ini_get("open_basedir") == false) {
+            if (ini_get("safe_mode") == false) {
                 curl_setopt($this->ch, CURLOPT_MAXREDIRS, $this->maxredirs);
-                curl_setopt($this->ch, CURLOPT_FOLLOWLOCATION, true);
+                @curl_setopt($this->ch, CURLOPT_FOLLOWLOCATION, true);
             }
         }
 
@@ -215,7 +241,7 @@ class Network__curl implements Network__Interface
         $result = curl_exec($this->ch);
         $header_size = curl_getinfo($this->ch, CURLINFO_HEADER_SIZE);
 
-        $this->responseHeader = explode("\r\n", substr($result, 0, $header_size - 4));
+        $this->responseHeader = explode("\r\n", substr($result, 0, ($header_size - 4)));
         $this->responseText = substr($result, $header_size);
         curl_close($this->ch);
 
@@ -281,7 +307,7 @@ class Network__curl implements Network__Interface
     public function addBinary($name, $entity, $filename = null, $mime = '')
     {
         global $zbp;
-        $this->__isBinary = true;
+        $this->private_isBinary = true;
 
         if (!is_file($entity)) {
             $filename = ($filename === null ? $name : $filename);
@@ -305,7 +331,7 @@ class Network__curl implements Network__Interface
 
         $filename = ($filename === null ? basename($entity) : $filename);
         if (class_exists('CURLFile')) {
-            $this->postdata[$name] = new CURLFile($entity, $mime, $filename);
+            $this->postdata[$name] = new CURLFile(realpath($entity), $mime, $filename);
 
             return;
         }
@@ -347,7 +373,7 @@ class Network__curl implements Network__Interface
         $this->status = 0; //状态码
         $this->statusText = ''; //状态码文本
 
-        $this->__isBinary = false;
+        $this->private_isBinary = false;
 
         $this->option = array();
         $this->url = '';
@@ -381,4 +407,5 @@ class Network__curl implements Network__Interface
     {
         $this->maxredirs = (int) $n;
     }
+
 }

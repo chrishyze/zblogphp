@@ -22,10 +22,12 @@ if (!defined('ZBP_PATH')) {
  */
 class Comment extends Base
 {
+
     /**
      * @var bool 是否丢弃，如通过插件等判断为垃圾评论则标记为true
      */
     public $IsThrow = false;
+
     /**
      * @var int 评论层号
      */
@@ -119,7 +121,7 @@ class Comment extends Base
         global $zbp;
         if ($name === 'Author') {
             $m = $zbp->GetMemberByID($this->AuthorID);
-            if ($m->ID == 0) {
+            if ($m->ID == null) {
                 $m->Name = $this->Name;
                 $m->Alias = $this->Name;
                 $m->Email = $this->Email;
@@ -212,6 +214,7 @@ class Comment extends Base
         }
         $parentComment = $zbp->GetCommentByID($object->ParentID);
 
-        return $this->GetDeep($parentComment, $deep + 1);
+        return $this->GetDeep($parentComment, ($deep + 1));
     }
+
 }

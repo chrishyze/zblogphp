@@ -19,7 +19,7 @@ return array(
     'font_size'             => '',
     'windows_character_set' => 'ISO-8859-1',
 
-//Front-End & Back-End
+    //Front-End & Back-End
     'msg' => array(
         'id'                                => 'ID',
         'name'                              => 'Name',
@@ -77,6 +77,7 @@ return array(
         'check_comment'                     => 'Pending',
         'dashboard'                         => 'Dashboard Home',
         'settings'                          => 'Settings',
+        'web_settings'                      => 'Settings',
         'official_website'                  => 'Support',
         'parend_id'                         => 'Parent ID',
         'select_all'                        => 'Check All',
@@ -165,10 +166,16 @@ return array(
         'sidebar3'                          => 'Sidebar 3',
         'sidebar4'                          => 'Sidebar 4',
         'sidebar5'                          => 'Sidebar 5',
+        'sidebar6'                          => 'Sidebar 6',
+        'sidebar7'                          => 'Sidebar 7',
+        'sidebar8'                          => 'Sidebar 8',
+        'sidebar9'                          => 'Sidebar 9',
         'display_subcategorys'              => 'Show All Subcategories Posts in the Category',
         'drag_module_to_sidebar'            => 'To activate a module drag it to a sidebar. To deactivate a module drag it back.',
         'sidebar_module_count'              => 'Built-in %s Module',
-        'xmlrpc_address'                    => 'Protocol Address for XML-RPC',
+        'protocol_address'                  => 'Protocol Address',
+        'xmlrpc_address'                    => 'XML-RPC',
+        'api_address'                       => 'API Url',
         'system_environment'                => 'System Environments',
         'view_rights'                       => 'Permissions',
         'member_level'                      => 'User Level',
@@ -180,7 +187,7 @@ return array(
         'use_commas_to_separate'            => 'Separated by Commas',
         'show_common_tags'                  => 'Choose from the most used tags',
         'category_aritles_default_template' => 'The Default Template for the Category',
-        'confirm_operating'                 => 'Click "OK" to continue or click "Cancel" to stop.',
+        'confirm_operating'                 => 'Click [OK] to continue or click [Cancel] to stop.',
         'batch_operation'                   => 'Bulk Actions',
         'operation_succeed'                 => 'Successfully Completed',
         'operation_failed'                  => 'Operation Failure',
@@ -222,6 +229,7 @@ return array(
         'top_category'                      => 'Categorys',
         'jump_comment'                      => 'View Comment ID=',
         'year_suffix'                       => '',
+        'month_suffix'                      => '',
         'week_suffix'                       => '',
         'time'                              => 'Time',
         'hour'                              => 'Hour',
@@ -250,10 +258,23 @@ return array(
         'current_template'                  => 'Current Template',
         'additional_security'               => 'Additional Security',
         'using_cdn_guest_type'              => 'HTTP Header for IP',
+        'first_button'                      => '‹‹',
+        'prev_button'                       => '‹',
+        'next_button'                       => '›',
+        'last_button'                       => '››',
+        'numeral_button'                    => '%num%',
+        'verify_succeed'                    => 'Verify succeed',
+        'verify_fail'                       => 'Verify fail',
+        'verifying'                         => 'Verifying',
+        'show_warning_error'                => 'Allow warning level error',
+        'backend_setting'                   => 'Bakcend Setting',
+        'get_text_intro'                    => 'Get a plain text intro',
+        'update_db'                         => 'Please click the link to upgrade the database structure.',
+        'enable_post_batch_delete'          => 'Enable Batch Delete of Post',
         ''                                  => '',
     ),
 
-//Action
+    //Action
     'actions' => array(
         'login'       => 'Log in',
         'logout'      => 'Log Out',
@@ -320,14 +341,16 @@ return array(
         'NoValidCode' => 'Ignore Captcha',
     ),
 
-//Article Level
+    //Article Level
     'post_status_name' => array(
         '0' => 'Published',
         '1' => 'Draft',
         '2' => 'Pending',
+        '4' => 'Private',
+        '8' => 'Locked',
     ),
 
-//User Level
+    //User Level
     'user_level_name' => array(
         '1' => 'Administrator',
         '2' => 'Redactor',
@@ -343,7 +366,7 @@ return array(
         '2' => 'Disabled',
     ),
 
-//January, February...
+    //January, February...
     'month' => array(
         '1'  => 'January',
         '2'  => 'February',
@@ -359,7 +382,7 @@ return array(
         '12' => 'December',
     ),
 
-//Jan., Feb. ...
+    //Jan., Feb. ...
     'month_abbr' => array(
         '1'  => 'Jan',
         '2'  => 'Feb',
@@ -375,7 +398,7 @@ return array(
         '12' => 'Dec',
     ),
 
-//Sunday, Monday..
+    //Sunday, Monday..
     'week' => array(
         '7' => 'Sunday',
         '1' => 'Monday',
@@ -386,7 +409,7 @@ return array(
         '6' => 'Saturday',
     ),
 
-//Sun., Mon. ...
+    //Sun., Mon. ...
     'week_abbr' => array(
         '7' => 'Sun',
         '1' => 'Mon',
@@ -407,7 +430,7 @@ return array(
         '6' => 'S',
     ),
 
-//Custom Error Information
+    //Custom Error Information
     'error' => array(
         '0'  => 'Unknown Error',
         '1'  => 'Unknown Command',
@@ -510,7 +533,7 @@ return array(
         'more_help' => 'https://www.zblogcn.com/help/?id={%id%}&message={%message%}',
     ),
 
-// Possible causes of the error
+    // Possible causes of the error
     'error_reasons' => array(
         // -1 for default
         'default' => '',

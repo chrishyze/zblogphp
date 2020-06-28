@@ -8,35 +8,76 @@ if (!defined('ZBP_PATH')) {
  */
 class Template
 {
+
     protected $path = null;
+
     protected $entryPage = null;
+
     protected $uncompiledCodeStore = array();
+
     public $theme = "";
+
     public $templates = array();
+
+    public $templates_Name = array();
+
+    public $templates_Type = array();
+
     public $compiledTemplates = array();
+
     public $templateTags = array();
+
     public $staticTags = array();
 
     /**
      * @var array 默认侧栏
      */
     public $sidebar = array();
+
     /**
      * @var array 侧栏2
      */
     public $sidebar2 = array();
+
     /**
      * @var array 侧栏3
      */
     public $sidebar3 = array();
+
     /**
      * @var array 侧栏4
      */
     public $sidebar4 = array();
+
     /**
      * @var array 侧栏5
      */
     public $sidebar5 = array();
+
+    /**
+     * @var array 侧栏6
+     */
+    public $sidebar6 = array();
+
+    /**
+     * @var array 侧栏77
+     */
+    public $sidebar7 = array();
+
+    /**
+     * @var array 侧栏8
+     */
+    public $sidebar8 = array();
+
+    /**
+     * @var array 侧栏9
+     */
+    public $sidebar9 = array();
+
+    /**
+     * @var bool 是否启用标识模板类型
+     */
+    public $isnamedtype = array();
 
     public function __construct()
     {
@@ -128,7 +169,7 @@ class Template
     public function SetTagsAll(&$array)
     {
         if (is_array($array)) {
-            $this->templateTags = $array + $this->templateTags;
+            $this->templateTags = ($array + $this->templateTags);
         }
     }
 
@@ -137,6 +178,12 @@ class Template
      */
     public function CompileFiles()
     {
+        foreach ($this->dirs as $key => $value) {
+            $value = str_ireplace('/theme/' . $this->theme . '/template', '/cache/compiled/' . $this->theme, $value);
+            if (!file_exists($value)) {
+                mkdir($value, 0755, true);
+            }
+        }
         foreach ($this->templates as $name => $content) {
             $s = RemoveBOM($this->CompileFile($content));
             @file_put_contents($this->path . $name . '.php', $s);
@@ -156,8 +203,28 @@ class Template
         if (!file_exists($this->path)) {
             @mkdir($this->path, 0755, true);
         } else {
-            foreach (GetFilesInDir($this->path, 'php') as $fullname) {
-                @unlink($fullname);
+            foreach (GetFilesInDir($this->path, 'php') as $s) {
+                if (file_exists($s)) {
+                    @unlink($s);
+                }
+            }
+            foreach ($this->files as $key => $value) {
+                $s = $zbp->path . 'zb_users/cache/compiled/' . $this->theme . '/' . $key . '.php';
+                if (file_exists($s)) {
+                    @unlink($s);
+                }
+            }
+            $this->dirs = array_reverse($this->dirs);
+            foreach ($this->dirs as $key => $value) {
+                $s = str_replace('/theme/' . $this->theme . '/template', '/cache/compiled/' . $this->theme, $value);
+                if (file_exists($s)) {
+                    foreach (GetFilesInDir($s, 'php') as $t) {
+                        if (file_exists($t)) {
+                            @unlink($t);
+                        }
+                    }
+                    @rmdir($s);
+                }
             }
         }
         $this->addNonexistendTags();
@@ -527,28 +594,31 @@ class Template
     public function Display($entryPage = "")
     {
         global $zbp;
+
+        foreach ($zbp->modulesbyfilename as $m) {
+            $m->Content = $this->ReplaceStaticTags($m->Content);
+        }
+
         if ($entryPage == "") {
             $entryPage = $this->entryPage;
         }
-        $f = $this->path . $entryPage . '.php';
 
-        if (!is_readable($f)) {
+        foreach ($GLOBALS['hooks']['Filter_Plugin_Template_Display'] as $fpname => &$fpsignal) {
+            $fpname($this, $entryPage);
+        }
+
+        $file = $this->path . $entryPage . '.php';
+
+        if (!is_readable($file)) {
             $zbp->ShowError(86, __FILE__, __LINE__);
         }
-
-        $ak = array_keys($this->staticTags);
-        $av = array_values($this->staticTags);
-        foreach ($zbp->modulesbyfilename as &$m) {
-            $m->Content = str_replace($ak, $av, $m->Content);
-        }
-        unset($ak, $av);
 
         // 入口处将tags里的变量提升全局
         foreach ($this->templateTags as $key => &$value) {
             $$key = &$value;
         }
 
-        include $f;
+        include $file;
     }
 
     /**
@@ -595,6 +665,8 @@ class Template
 
         $theme = $this->theme;
         $templates = array();
+        $templates_Name = array();
+        $templates_Type = array();
 
         // 读取预置模板
         $files = GetFilesInDir($zbp->path . 'zb_system/defend/default/', 'php');
@@ -603,18 +675,145 @@ class Template
         }
 
         // 读取主题模板
-        $files = GetFilesInDir($zbp->usersdir . 'theme/' . $theme . '/template/', 'php');
-        foreach ($files as $sortname => $fullname) {
-            $templates[$sortname] = file_get_contents($fullname);
+        //$files = GetFilesInDir($zbp->usersdir . 'theme/' . $theme . '/template/', 'php');
+        //foreach ($files as $sortname => $fullname) {
+        //    $templates[$sortname] = file_get_contents($fullname);
+        //}
+        $this->dirs = array();
+        $this->files = array();
+        $this->GetAllFileDir($zbp->usersdir . 'theme/' . $theme . '/template/');
+        foreach ($this->dirs as $key => $value) {
+            if (substr($this->dirs[$key], -1) != '/') {
+                $this->dirs[$key] .= '/';
+            }
         }
 
-        for ($i = 2; $i <= 5; $i++) {
+        foreach ($this->files as $key => $value) {
+            $templates[$key] = $value;
+        }
+
+        for ($i = 2; $i < 10; $i++) {
             if (!isset($templates['sidebar' . $i])) {
                 $templates['sidebar' . $i] = str_replace('$sidebar', '$sidebar' . $i, $templates['sidebar']);
             }
         }
 
+        $this->template_json_file = null;
+        foreach ($templates as $key => $value) {
+            $a = $this->GetTemplateNameAndType($key, $value);
+            $templates_Name[$key] = $a[0];
+            $templates_Type[$key] = $a[1];
+        }
+
         $this->templates = $templates;
+        $this->templates_Name = $templates_Name;
+        $this->templates_Type = $templates_Type;
+
+        return true;
+    }
+
+    //获取 模板的名称和类型
+    private function GetTemplateNameAndType($filename, $content)
+    {
+        $name = '';
+        $type = '';
+        $t = $content;
+        if (stristr($t, 'Template Name:')) {
+            $t = stristr($t, 'Template Name:');
+            $t = str_ireplace('Template Name:', '', $t);
+            $name = strtok($t, ' ');
+        }
+        $t = $content;
+        if (stristr($t, 'Template Type:')) {
+            $t = stristr($t, 'Template Type:');
+            $t = str_ireplace('Template Type:', '', $t);
+            $type = strtok($t, ' ');
+        }
+
+        if (is_readable($f = $GLOBALS['blogpath'] . 'zb_users/theme/' . $this->theme . '/template.json')) {
+            if (!is_object($this->template_json_file)) {
+                $this->template_json_file = json_decode(file_get_contents($f));
+            }
+        }
+        if (is_object($this->template_json_file)) {
+            if (is_array($this->template_json_file->templates)) {
+                foreach ($this->template_json_file->templates as $key => $value) {
+                    if (strtolower($filename) == strtolower($value->filename)) {
+                        $name = $value->name;
+                        $type = $value->type;
+                        break;
+                    }
+                }
+            }
+        }
+        $name = trim($name);
+        $type = trim($type);
+        if ($type != null) {
+            $this->isnamedtype = true;
+        }
+        if ($filename == 'index' && $type == null) {
+            $type = 'list';
+        }
+        if ($filename == 'single' && $type == null) {
+            $type = 'single';
+        }
+        if ($filename == '404' && $type == null) {
+            $type = '404';
+        }
+        if ($filename == 'search' && $type == null) {
+            $type = 'search';
+        }
+        return array($name, $type);
+    }
+
+    private $template_json_file = null;
+
+    private $dirs = array();
+
+    private $files = array();
+
+    private function GetAllFileDir($dir)
+    {
+        global $zbp;
+        if (function_exists('scandir')) {
+            foreach (scandir($dir) as $d) {
+                if (is_dir($dir . $d)) {
+                    if ((substr($d, 0, 1) != '.')) {
+                        $this->dirs[] = $dir . $d . '/';
+                        $this->GetAllFileDir($dir . $d . '/');
+                    }
+                } elseif (is_readable($dir . $d)) {
+                    $s = $dir . $d;
+                    $i = strlen($zbp->usersdir . 'theme/' . $this->theme . '/template/');
+                    if (substr($s, -4) == '.php') {
+                        $s2 = substr($s, ($i - strlen($s)));
+                        $s3 = substr($s2, 0, (strlen($s2) - 4));
+                        $this->files[$s3] = file_get_contents($s); //$dir . $d;
+                    }
+                }
+            }
+        } else {
+            if ($handle = opendir($dir)) {
+                while (false !== ($file = readdir($handle))) {
+                    if ($file != "." && $file != "..") {
+                        $d = str_replace('template//', 'template/', str_replace('\\', '/', $dir . '/' . $file));
+                        if (is_dir($dir . '/' . $file)) {
+                            $this->dirs[] = $d;
+                            $this->GetAllFileDir($d);
+                        } elseif (is_readable($d)) {
+                            $s = $d;
+                            $i = strlen($zbp->usersdir . 'theme/' . $this->theme . '/template/');
+                            if (substr($s, -4) == '.php') {
+                                $s2 = substr($s, ($i - strlen($s)));
+                                $s3 = substr($s2, 0, (strlen($s2) - 4));
+                                $this->files[$s3] = file_get_contents($s); //$dir . $d;
+                            }
+                        }
+                    }
+                }
+                closedir($handle);
+            }
+        }
     }
 
     /**
@@ -643,6 +842,7 @@ class Template
         $this->templateTags['user'] = &$zbp->user;
         $this->templateTags['option'] = &$option;
         $this->templateTags['lang'] = &$zbp->lang;
+        $this->templateTags['langs'] = &$zbp->langs;
         $this->templateTags['version'] = &$zbp->version;
         $this->templateTags['categorys'] = &$zbp->categories;
         $this->templateTags['categories'] = &$zbp->categories;
@@ -672,12 +872,17 @@ class Template
         $this->templateTags['feedurl'] = &$zbp->feedurl;
         $this->templateTags['searchurl'] = &$zbp->searchurl;
         $this->templateTags['ajaxurl'] = &$zbp->ajaxurl;
+        $this->templateTags['issearch'] = false;
         $s = array(
             $option['ZC_SIDEBAR_ORDER'],
             $option['ZC_SIDEBAR2_ORDER'],
             $option['ZC_SIDEBAR3_ORDER'],
             $option['ZC_SIDEBAR4_ORDER'],
             $option['ZC_SIDEBAR5_ORDER'],
+            $option['ZC_SIDEBAR6_ORDER'],
+            $option['ZC_SIDEBAR7_ORDER'],
+            $option['ZC_SIDEBAR8_ORDER'],
+            $option['ZC_SIDEBAR9_ORDER'],
         );
         foreach ($s as $k => $v) {
             $a = explode('|', $v);
@@ -693,11 +898,11 @@ class Template
             $this->$s = $ms;
             $ms = null;
         }
-        $this->templateTags['sidebar'] = &$this->sidebar;
-        $this->templateTags['sidebar2'] = &$this->sidebar2;
-        $this->templateTags['sidebar3'] = &$this->sidebar3;
-        $this->templateTags['sidebar4'] = &$this->sidebar4;
-        $this->templateTags['sidebar5'] = &$this->sidebar5;
+
+        for ($i = 1; $i < 10; $i++) {
+            $j = ($i == 1) ? '' : $i;
+            $this->templateTags['sidebar' . $j] = &$this->{'sidebar' . $j};
+        }
 
         //foreach ($GLOBALS['hooks']['Filter_Plugin_Template_MakeTemplatetags'] as $fpname => &$fpsignal) {
         //    $fpreturn = $fpname($this->templateTags);
@@ -715,7 +920,7 @@ class Template
                 $o['{#' . $k . '#}'] = $v;
             }
         }
-        $this->staticTags = $t + $o;
+        $this->staticTags = ($t + $o);
     }
 
     public function ReplaceStaticTags($s)
@@ -729,4 +934,5 @@ class Template
     {
         return $this->entryPage;
     }
+
 }

@@ -2,18 +2,17 @@
 /**
  * Z-Blog with PHP.
  *
- * @author
- * @copyright (C) RainbowSoft Studio
- *
+ * @author  Z-BlogPHP Team
  * @version 2.0 2013-06-14
  */
 require '../function/c_system_base.php';
 
 ob_clean();
-// @TODO: Configuable
+
 ?>
-var zbp = new ZBP({
+var zbpConfig = {
     bloghost: "<?php echo $zbp->host; ?>",
+    blogversion: "<?php echo $zbp->version; ?>",
     ajaxurl: "<?php echo $zbp->ajaxurl; ?>",
     cookiepath: "<?php echo $zbp->cookiespath; ?>",
     lang: {
@@ -35,17 +34,17 @@ var zbp = new ZBP({
                 selector: '#inpName',
                 saveLocally: true,
                 required: true,
-                validateRule: /^[\.\_A-Za-z0-9\u4e00-\u9fa5@]+$/ig,
+                validateRule: /^[^\s　]+$/ig,
                 validateFailedErrorCode: 72,
             },
             email: {
                 selector: '#inpEmail',
                 saveLocally: true,
-                required: true,
                 validateRule: /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/ig,
                 validateFailedErrorCode: 29,
             },
             homepage: {
+                selector: '#inpHomePage',
                 getter: function () {
                     var t = $('#inpHomePage').val();
                     return (!/^(.+)\:\/\//.test(t) && t !== "") ? 'http://' + t : t; 
@@ -73,7 +72,13 @@ var zbp = new ZBP({
             }
         }
     }
-});
+};
+<?php
+foreach ($GLOBALS['hooks']['Filter_Plugin_Html_Js_ZbpConfig'] as $fpname => &$fpsignal) {
+    $fpname();
+}
+?>
+var zbp = new ZBP(zbpConfig);
 
 var bloghost = zbp.options.bloghost;
 var cookiespath = zbp.options.cookiepath;
@@ -113,7 +118,15 @@ $(function () {
         }
         $cpVrs.attr("href", zbp.options.bloghost + "zb_system/cmd.php?act=ArticleEdt");
     }
-
+});
+$(function(){
+  let inpNameVal = $(zbpConfig.comment.inputs.name.selector).val();
+  if (typeof inpNameVal === "undefined") {
+    return;
+  }
+  if (inpNameVal.trim() === "" || inpNameVal === "<?php echo $zbp->lang['msg']['anonymous']; ?>"){
+    zbp.userinfo.output();
+  }
 });
 <?php
 }
@@ -125,19 +138,15 @@ $s = ob_get_clean();
 $m = 'W/' . md5($s);
 
 header('Content-Type: application/x-javascript; charset=utf-8');
+header('Etag: ' . $m);
 
-if ($zbp->option['ZC_JS_304_ENABLE']) {
-    if (isset($_SERVER["HTTP_IF_NONE_MATCH"]) && $_SERVER["HTTP_IF_NONE_MATCH"] == $m) {
+if (isset($_SERVER["HTTP_IF_NONE_MATCH"]) && $_SERVER["HTTP_IF_NONE_MATCH"] == $m) {
+    if (isset($zbp->option['ZC_JS_304_ENABLE']) && $zbp->option['ZC_JS_304_ENABLE']) {
         SetHttpStatusCode(304);
         die;
     }
-    header('Etag: ' . $m);
 }
-
-$zbp->CheckGzip();
-$zbp->StartGzip();
 
 echo $s;
 
 die();
-?>

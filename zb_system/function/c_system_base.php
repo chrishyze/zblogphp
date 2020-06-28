@@ -1,11 +1,12 @@
 <?php
+
 /**
  * 系统初始化等相关操作.
- *
- * @copyright (C) RainbowSoft Studio
  */
 
 /**
+ * ZBLOGPHP
+ *
  * @var ZBlogPHP;
  */
 $zbp = null;
@@ -59,7 +60,7 @@ define('ENGINE_PHP', 1);
 define('ENGINE_HHVM', 2);
 define('PHP_SYSTEM', GetSystem());
 define('PHP_SERVER', GetWebServer());
-define('PHP_ENGINE', GetPHPEngine());
+define('PHP_ENGINE', ENGINE_PHP);
 define('IS_X64', (PHP_INT_SIZE === 8));
 /*
  * 如果想获取准确的值，请zbp->Load后使用$zbp->isHttps
@@ -141,6 +142,15 @@ define('ZC_MEMBER_STATUS_AUDITING', 1);
  * 用户状态：已锁定
  */
 define('ZC_MEMBER_STATUS_LOCKED', 2);
+/*
+ * 文章状态：私人
+ */
+define('ZC_POST_STATUS_PRIVATE', 4);
+/*
+ * 文章状态：加密
+ */
+define('ZC_POST_STATUS_PASSWORD', 8);
+
 
 /*
  *定义命令
@@ -213,6 +223,7 @@ $GLOBALS['actions'] = array(
     'PluginMng'   => 1,
     'ModuleMng'   => 1,
 
+    'PostBat'     => 2,
     'ArticleAll'  => 2,
     'PageAll'     => 2,
     'CategoryAll' => 2,
@@ -248,26 +259,29 @@ $GLOBALS['datainfo'] = array(
     'Config' => array(
         'ID'    => array('conf_ID', 'integer', '', 0),
         'Name'  => array('conf_Name', 'string', 250, ''),
+        'Key'   => array('conf_Key', 'string', 250, ''),
         'Value' => array('conf_Value', 'string', '', ''),
     ),
     'Post' => array(
-        'ID'       => array('log_ID', 'integer', '', 0),
-        'CateID'   => array('log_CateID', 'integer', '', 0),
-        'AuthorID' => array('log_AuthorID', 'integer', '', 0),
-        'Tag'      => array('log_Tag', 'string', 250, ''),
-        'Status'   => array('log_Status', 'integer', '', 0),
-        'Type'     => array('log_Type', 'integer', '', 0),
-        'Alias'    => array('log_Alias', 'string', 250, ''),
-        'IsTop'    => array('log_IsTop', 'integer', '', 0),
-        'IsLock'   => array('log_IsLock', 'boolean', '', false),
-        'Title'    => array('log_Title', 'string', 250, ''),
-        'Intro'    => array('log_Intro', 'string', '', ''),
-        'Content'  => array('log_Content', 'string', '', ''),
-        'PostTime' => array('log_PostTime', 'integer', '', 0),
-        'CommNums' => array('log_CommNums', 'integer', '', 0),
-        'ViewNums' => array('log_ViewNums', 'integer', '', 0),
-        'Template' => array('log_Template', 'string', 250, ''),
-        'Meta'     => array('log_Meta', 'string', '', ''),
+        'ID'         => array('log_ID', 'integer', '', 0),
+        'CateID'     => array('log_CateID', 'integer', '', 0),
+        'AuthorID'   => array('log_AuthorID', 'integer', '', 0),
+        'Tag'        => array('log_Tag', 'string', 250, ''),
+        'Status'     => array('log_Status', 'integer', '', 0),
+        'Type'       => array('log_Type', 'integer', '', 0),
+        'Alias'      => array('log_Alias', 'string', 250, ''),
+        'IsTop'      => array('log_IsTop', 'integer', '', 0),
+        'IsLock'     => array('log_IsLock', 'boolean', '', false),
+        'Title'      => array('log_Title', 'string', 250, ''),
+        'Intro'      => array('log_Intro', 'string', '', ''),
+        'Content'    => array('log_Content', 'string', '', ''),
+        'CreateTime' => array('log_CreateTime', 'integer', '', 0),
+        'PostTime'   => array('log_PostTime', 'integer', '', 0),
+        'UpdateTime' => array('log_UpdateTime', 'integer', '', 0),
+        'CommNums'   => array('log_CommNums', 'integer', '', 0),
+        'ViewNums'   => array('log_ViewNums', 'integer', '', 0),
+        'Template'   => array('log_Template', 'string', 250, ''),
+        'Meta'       => array('log_Meta', 'string', '', ''),
     ),
     'Category' => array(
         'ID'          => array('cate_ID', 'integer', '', 0),
@@ -276,6 +290,7 @@ $GLOBALS['datainfo'] = array(
         'Type'        => array('cate_Type', 'integer', '', 0),
         'Count'       => array('cate_Count', 'integer', '', 0),
         'Alias'       => array('cate_Alias', 'string', 250, ''),
+        'Group'       => array('cate_Group', 'string', 250, ''),
         'Intro'       => array('cate_Intro', 'string', '', ''),
         'RootID'      => array('cate_RootID', 'integer', '', 0),
         'ParentID'    => array('cate_ParentID', 'integer', '', 0),
@@ -312,24 +327,26 @@ $GLOBALS['datainfo'] = array(
         'Meta'        => array('mod_Meta', 'string', '', ''),
     ),
     'Member' => array(
-        'ID'       => array('mem_ID', 'integer', '', 0),
-        'Guid'     => array('mem_Guid', 'string', 36, ''),
-        'Level'    => array('mem_Level', 'integer', '', 6),
-        'Status'   => array('mem_Status', 'integer', '', 0),
-        'Name'     => array('mem_Name', 'string', 250, ''),
-        'Password' => array('mem_Password', 'string', 250, ''),
-        'Email'    => array('mem_Email', 'string', 250, ''),
-        'HomePage' => array('mem_HomePage', 'string', 250, ''),
-        'IP'       => array('mem_IP', 'string', 250, ''),
-        'PostTime' => array('mem_PostTime', 'integer', '', 0),
-        'Alias'    => array('mem_Alias', 'string', 250, ''),
-        'Intro'    => array('mem_Intro', 'string', '', ''),
-        'Articles' => array('mem_Articles', 'integer', '', 0),
-        'Pages'    => array('mem_Pages', 'integer', '', 0),
-        'Comments' => array('mem_Comments', 'integer', '', 0),
-        'Uploads'  => array('mem_Uploads', 'integer', '', 0),
-        'Template' => array('mem_Template', 'string', 250, ''),
-        'Meta'     => array('mem_Meta', 'string', '', ''),
+        'ID'         => array('mem_ID', 'integer', '', 0),
+        'Guid'       => array('mem_Guid', 'string', 36, ''),
+        'Level'      => array('mem_Level', 'integer', '', 6),
+        'Status'     => array('mem_Status', 'integer', '', 0),
+        'Name'       => array('mem_Name', 'string', 250, ''),
+        'Password'   => array('mem_Password', 'string', 250, ''),
+        'Email'      => array('mem_Email', 'string', 250, ''),
+        'HomePage'   => array('mem_HomePage', 'string', 250, ''),
+        'IP'         => array('mem_IP', 'string', 250, ''),
+        'CreateTime' => array('mem_CreateTime', 'integer', '', 0),
+        'PostTime'   => array('mem_PostTime', 'integer', '', 0),
+        'UpdateTime' => array('mem_UpdateTime', 'integer', '', 0),
+        'Alias'      => array('mem_Alias', 'string', 250, ''),
+        'Intro'      => array('mem_Intro', 'string', '', ''),
+        'Articles'   => array('mem_Articles', 'integer', '', 0),
+        'Pages'      => array('mem_Pages', 'integer', '', 0),
+        'Comments'   => array('mem_Comments', 'integer', '', 0),
+        'Uploads'    => array('mem_Uploads', 'integer', '', 0),
+        'Template'   => array('mem_Template', 'string', 250, ''),
+        'Meta'       => array('mem_Meta', 'string', '', ''),
     ),
     'Tag' => array(
         'ID'       => array('tag_ID', 'integer', '', 0),
@@ -338,6 +355,7 @@ $GLOBALS['datainfo'] = array(
         'Type'     => array('tag_Type', 'integer', '', 0),
         'Count'    => array('tag_Count', 'integer', '', 0),
         'Alias'    => array('tag_Alias', 'string', 250, ''),
+        'Group'    => array('tag_Group', 'string', 250, ''),
         'Intro'    => array('tag_Intro', 'string', '', ''),
         'Template' => array('tag_Template', 'string', 250, ''),
         'Meta'     => array('tag_Meta', 'string', '', ''),
@@ -370,8 +388,11 @@ if (function_exists('memory_get_usage')) {
 
 /*
  * 版本兼容处理
+ * PHP 7.4移除了get_magic_quotes_gpc
+ * https://github.com/php/php-src/commit/b2ea507beab862a0167af6b99f44fe9c695ca4f0
  */
-if (function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc()) {
+if (function_exists('get_magic_quotes_gpc') && PHP_VERSION_ID < 70400 && call_user_func('get_magic_quotes_gpc')) {
+
     function _stripslashes(&$var)
     {
         if (is_array($var)) {
@@ -382,6 +403,7 @@ if (function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc()) {
             $var = stripslashes($var);
         }
     }
+
     _stripslashes($_GET);
     _stripslashes($_POST);
     _stripslashes($_COOKIE);
@@ -420,6 +442,7 @@ $GLOBALS['currenturl'] = GetRequestUri();
  * 语言包
  */
 $GLOBALS['lang'] = array();
+$GLOBALS['langs'] = array();
 /*
  * 系统根路径
  */
@@ -438,13 +461,13 @@ $GLOBALS['activeapps'] = &$GLOBALS['activedapps'];
 /*
  * 加载设置
  */
-$GLOBALS['option'] = require ZBP_PATH . 'zb_system/defend/option.php';
+$GLOBALS['option'] = include ZBP_PATH . 'zb_system/defend/option.php';
 $op_users = null;
 if (!ZBP_HOOKERROR && isset($_ENV['ZBP_USER_OPTION']) && is_readable($file_base = $_ENV['ZBP_USER_OPTION'])) {
-    $op_users = require $file_base;
+    $op_users = include $file_base;
     $GLOBALS['option'] = array_merge($GLOBALS['option'], $op_users);
 } elseif (is_readable($file_base = $GLOBALS['usersdir'] . 'c_option.php')) {
-    $op_users = require $file_base;
+    $op_users = include $file_base;
     $GLOBALS['option'] = array_merge($GLOBALS['option'], $op_users);
 }
 
@@ -475,7 +498,7 @@ if (ZBP_SAFEMODE === false) {
     }
 
     if (is_readable($file_base = $GLOBALS['usersdir'] . 'theme/' . $GLOBALS['blogtheme'] . '/include.php')) {
-        require $file_base;
+        include $file_base;
     }
 
     $aps = $GLOBALS['zbp']->GetPreActivePlugin();
@@ -484,7 +507,7 @@ if (ZBP_SAFEMODE === false) {
             $GLOBALS['activedapps'][] = $ap;
         }
         if (is_readable($file_base = $GLOBALS['usersdir'] . 'plugin/' . $ap . '/include.php')) {
-            require $file_base;
+            include $file_base;
         }
     }
 

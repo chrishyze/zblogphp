@@ -1,10 +1,19 @@
 <?php
 
+/**
+ * Z-Blog with PHP.
+ *
+ * @author Z-BlogPHP Team
+ */
+
 require './function/c_system_base.php';
 $zbp->Load();
-$action = GetVars('act', 'GET');
+$zbp->action = GetVars('act', 'GET');
+if ($zbp->action == 'ajax' || strcasecmp(GetVars('HTTP_X_REQUESTED_WITH', 'SERVER'), 'XMLHttpRequest') == 0) {
+    define('IN_AJAX_PROCESSING', true);
+}
 
-if (!$zbp->CheckRights($action)) {
+if (!$zbp->CheckRights($zbp->action)) {
     $zbp->ShowError(6, __FILE__, __LINE__);
     die();
 }
@@ -13,7 +22,7 @@ foreach ($GLOBALS['hooks']['Filter_Plugin_Cmd_Begin'] as $fpname => &$fpsignal) 
     $fpname();
 }
 
-switch ($action) {
+switch ($zbp->action) {
     case 'login':
         if (!empty($zbp->user->ID) && GetVars('redirect', 'GET')) {
             $a = parse_url(GetVars('redirect', 'GET'));
@@ -59,63 +68,6 @@ switch ($action) {
         $q = rawurlencode(trim(strip_tags(GetVars('q', 'POST'))));
         Redirect($zbp->searchurl . '?q=' . $q);
         break;
-    case 'misc':
-        include './function/c_system_misc.php';
-        ob_clean();
-
-        $miscType = GetVars('type', 'GET');
-
-        foreach ($GLOBALS['hooks']['Filter_Plugin_Misc_Begin'] as $fpname => &$fpsignal) {
-            $fpname($miscType);
-        }
-
-        switch ($miscType) {
-            case 'statistic':
-                CheckIsRefererValid();
-                if (!$zbp->CheckRights('admin')) {
-                    echo $zbp->ShowError(6, __FILE__, __LINE__);
-                    die();
-                }
-                misc_statistic();
-                break;
-            case 'updateinfo':
-                CheckIsRefererValid();
-                if (!$zbp->CheckRights('root')) {
-                    echo $zbp->ShowError(6, __FILE__, __LINE__);
-                    die();
-                }
-                misc_updateinfo();
-                break;
-            case 'showtags':
-                $zbp->csrfExpiration = 48;
-                CheckIsRefererValid();
-                if (!$zbp->CheckRights('ArticleEdt')) {
-                    Http404();
-                    die();
-                }
-                misc_showtags();
-                break;
-            case 'vrs':
-                if (!$zbp->CheckRights('misc')) {
-                    $zbp->ShowError(6, __FILE__, __LINE__);
-                }
-                misc_viewrights();
-                break;
-            case 'phpinfo':
-                if (!$zbp->CheckRights('root')) {
-                    echo $zbp->ShowError(6, __FILE__, __LINE__);
-                    die();
-                }
-                misc_phpif();
-                break;
-            case 'ping':
-                misc_ping();
-                break;
-            default:
-                break;
-        }
-
-        break;
     case 'cmt':
         $die = false;
         if (GetVars('isajax', 'POST')) {
@@ -141,8 +93,7 @@ switch ($action) {
         break;
     case 'getcmt':
         ViewComments((int) GetVars('postid', 'GET'), (int) GetVars('page', 'GET'));
-        die();
-    break;
+        break;
     case 'ArticleEdt':
         Redirect('admin/edit.php?' . GetVars('QUERY_STRING', 'SERVER'));
         break;
@@ -322,6 +273,8 @@ switch ($action) {
             $hint = $lang['error']['84'];
             $hint = str_replace('%s', "【$disableResult->name ($disableResult->id)】", $hint);
             $zbp->SetHint('bad', $hint);
+        } elseif ($disableResult === false) {
+            $zbp->SetHint('bad');
         } else {
             $zbp->BuildModule();
             $zbp->SaveCache();
@@ -395,6 +348,26 @@ switch ($action) {
         $zbp->SetHint('good');
         Redirect('cmd.php?act=SettingMng');
         break;
+    case 'PostBat':
+        BatchPost(GetVars('type', 'GET'));
+        $zbp->BuildModule();
+        $zbp->SaveCache();
+        $zbp->SetHint('good');
+        Redirect($_SERVER["HTTP_REFERER"]);
+        break;
+    case 'misc':
+        include './function/c_system_misc.php';
+        ob_clean();
+
+        $miscType = GetVars('type', 'GET');
+
+        foreach ($GLOBALS['hooks']['Filter_Plugin_Misc_Begin'] as $fpname => &$fpsignal) {
+            $fpname($miscType);
+        }
+
+        $function = 'misc_' . $miscType;
+        $function();
+        break;
     case 'ajax':
         foreach ($GLOBALS['hooks']['Filter_Plugin_Cmd_Ajax'] as $fpname => &$fpsignal) {
             $fpname(GetVars('src', 'GET'));
@@ -404,4 +377,8 @@ switch ($action) {
     default:
         // code...
         break;
+}
+
+foreach ($GLOBALS['hooks']['Filter_Plugin_Cmd_End'] as $fpname => &$fpsignal) {
+    $fpname();
 }

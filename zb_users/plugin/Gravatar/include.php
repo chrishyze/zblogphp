@@ -5,14 +5,14 @@ RegisterPlugin("Gravatar", "ActivePlugin_Gravatar");
 
 function ActivePlugin_Gravatar()
 {
-    Add_Filter_Plugin('Filter_Plugin_Mebmer_Avatar', 'Gravatar_Url');
+    Add_Filter_Plugin('Filter_Plugin_Member_Avatar', 'Gravatar_Url');
 }
 
 function InstallPlugin_Gravatar()
 {
     global $zbp;
     //$zbp->Config('Gravatar')->default_url='http://cn.gravatar.com/avatar/{%emailmd5%}?s=40&d={%source%}';
-    $zbp->Config('Gravatar')->default_url = 'https://cdn.v2ex.com/gravatar/{%emailmd5%}.png?s=60&d=mm&r=G';
+    $zbp->Config('Gravatar')->default_url = '//dn-qiniu-avatar.qbox.me/avatar/{%emailmd5%}.png?s=60&d=mm&r=G';
     $zbp->Config('Gravatar')->source = '{%host%}zb_users/avatar/0.png';
     $zbp->Config('Gravatar')->local_priority = 0;
     $zbp->SaveConfig('Gravatar');
@@ -33,9 +33,9 @@ function Gravatar_Url(&$member)
 
     if ($zbp->Config('Gravatar')->local_priority && $member->ID > 0) {
         if (file_exists($zbp->usersdir . 'avatar/' . $member->ID . '.png')) {
-            //$GLOBALS['Filter_Plugin_Mebmer_Avatar']['Gravatar_Url']=PLUGIN_EXITSIGNAL_BREAK;
+            //$GLOBALS['Filter_Plugin_Member_Avatar']['Gravatar_Url']=PLUGIN_EXITSIGNAL_BREAK;
             //return null;
-            $GLOBALS['Filter_Plugin_Mebmer_Avatar']['Gravatar_Url'] = PLUGIN_EXITSIGNAL_RETURN;
+            $GLOBALS['Filter_Plugin_Member_Avatar']['Gravatar_Url'] = PLUGIN_EXITSIGNAL_RETURN;
             $s = $zbp->host . 'zb_users/avatar/' . $member->ID . '.png';
 
             return $s;
@@ -43,7 +43,7 @@ function Gravatar_Url(&$member)
     }
 
     if ($member->Email !== '') {
-        $GLOBALS['Filter_Plugin_Mebmer_Avatar']['Gravatar_Url'] = PLUGIN_EXITSIGNAL_RETURN;
+        $GLOBALS['Filter_Plugin_Member_Avatar']['Gravatar_Url'] = PLUGIN_EXITSIGNAL_RETURN;
         $s = $default_url;
         $s = str_replace('{%source%}', urlencode($source), $s);
         $s = str_replace('{%emailmd5%}', md5($member->Email), $s);
@@ -52,6 +52,4 @@ function Gravatar_Url(&$member)
     } else {
         return $source;
     }
-
-    return 'sss';
 }

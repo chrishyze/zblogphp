@@ -1,8 +1,9 @@
 <?php
+
 /**
  * XML-RPC接口.
  *
- * @copyright (C) RainbowSoft Studio
+ *
  * https://codex.wordpress.org/XML-RPC_WordPress_API
  * https://codex.wordpress.org/XML-RPC_MetaWeblog_API
  * http://codex.wordpress.org.cn/XML-RPC_MetaWeblog_API
@@ -53,6 +54,7 @@ function xmlrpc_getUsersBlogs()
 
     echo $strXML;
 }
+
 /*
 array
 struct
@@ -387,7 +389,7 @@ function xmlrpc_getRecentPosts($n)
         if (strpos($value->Content, '<!--more-->') !== false) {
             $description = GetValueInArray(explode('<!--more-->', $value->Content), 1);
             $mt_text_more = GetValueInArray(explode('<!--more-->', $value->Content), 0);
-        //$description=$value->Content;
+            //$description=$value->Content;
         } else {
             $description = $value->Content;
             $mt_excerpt = $value->Intro;
@@ -510,7 +512,7 @@ function xmlrpc_getPost($id)
         if (strpos($value->Content, '<!--more-->') !== false) {
             $description = GetValueInArray(explode('<!--more-->', $value->Content), 1);
             $mt_text_more = GetValueInArray(explode('<!--more-->', $value->Content), 0);
-        //$description=$value->Content;
+            //$description=$value->Content;
         } else {
             $description = $value->Content;
             $mt_excerpt = $value->Intro;
@@ -636,7 +638,7 @@ function xmlrpc_editPost($id, $xmlstring, $publish)
         }
         if (isset($post['mt_allow_comments'])) {
             if ($post['mt_allow_comments'] > 0) {
-                $_POST['IsLock'] = $post['mt_allow_comments'] - 1;
+                $_POST['IsLock'] = ($post['mt_allow_comments'] - 1);
             } else {
                 $_POST['IsLock'] = $post['mt_allow_comments'];
             }
@@ -740,7 +742,7 @@ function xmlrpc_editPage($id, $xmlstring, $publish)
         }
         if (isset($post['mt_allow_comments'])) {
             if ($post['mt_allow_comments'] > 0) {
-                $_POST['IsLock'] = $post['mt_allow_comments'] - 1;
+                $_POST['IsLock'] = ($post['mt_allow_comments'] - 1);
             } else {
                 $_POST['IsLock'] = $post['mt_allow_comments'];
             }
@@ -945,9 +947,11 @@ if ($xml) {
             $password = (string) $xml->params->param[2]->value->string;
             xmlrpc_Verify($username, $password);
             if ($zbp->CheckRights('ArticlePst')) {
-                xmlrpc_editPost((int) $xml->params->param[0]->value->string,
+                xmlrpc_editPost(
+                    (int) $xml->params->param[0]->value->string,
                     $xml->params->param[3]->value->struct->asXML(),
-                    (bool) $xml->params->param[4]->value->boolean->asXML());
+                    (bool) $xml->params->param[4]->value->boolean->asXML()
+                );
             } else {
                 xmlrpc_ShowError(6, __FILE__, __LINE__);
             }
@@ -957,9 +961,11 @@ if ($xml) {
             $password = (string) $xml->params->param[2]->value->string;
             xmlrpc_Verify($username, $password);
             if ($zbp->CheckRights('ArticlePst')) {
-                xmlrpc_editPost(0,
+                xmlrpc_editPost(
+                    0,
                     $xml->params->param[3]->value->struct->asXML(),
-                    (bool) $xml->params->param[4]->value->boolean->asXML());
+                    (bool) $xml->params->param[4]->value->boolean->asXML()
+                );
             } else {
                 xmlrpc_ShowError(6, __FILE__, __LINE__);
             }
@@ -969,9 +975,11 @@ if ($xml) {
             $password = (string) $xml->params->param[2]->value->string;
             xmlrpc_Verify($username, $password);
             if ($zbp->CheckRights('PagePst')) {
-                xmlrpc_editPage(0,
+                xmlrpc_editPage(
+                    0,
                     $xml->params->param[3]->value->struct->asXML(),
-                    (bool) $xml->params->param[4]->value->boolean->asXML());
+                    (bool) $xml->params->param[4]->value->boolean->asXML()
+                );
             } else {
                 xmlrpc_ShowError(6, __FILE__, __LINE__);
             }
@@ -981,9 +989,11 @@ if ($xml) {
             $password = (string) $xml->params->param[3]->value->string;
             xmlrpc_Verify($username, $password);
             if ($zbp->CheckRights('PagePst')) {
-                xmlrpc_editPage((int) $xml->params->param[1]->value->string,
+                xmlrpc_editPage(
+                    (int) $xml->params->param[1]->value->string,
                     $xml->params->param[4]->value->struct->asXML(),
-                    (bool) $xml->params->param[5]->value->boolean->asXML());
+                    (bool) $xml->params->param[5]->value->boolean->asXML()
+                );
             } else {
                 xmlrpc_ShowError(6, __FILE__, __LINE__);
             }

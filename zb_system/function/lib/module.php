@@ -16,6 +16,9 @@ if (!defined('ZBP_PATH')) {
  */
 class Module extends Base
 {
+
+    protected $protect_isincludefile = false;
+
     /**
      * 构造函数.
      */
@@ -46,6 +49,11 @@ class Module extends Base
 
             return;
         }
+        if ($name == 'IsIncludeFile') {
+            $this->protect_isincludefile = (bool) $value;
+
+            return;
+        }
         foreach ($GLOBALS['hooks']['Filter_Plugin_Module_Set'] as $fpname => &$fpsignal) {
             $fpname($this, $name, $value);
         }
@@ -69,14 +77,27 @@ class Module extends Base
                 return 'user';
             } elseif ($this->Source == 'theme') {
                 return 'theme';
-            } elseif ($this->Source == 'plugin_' . $zbp->theme) {
+            } elseif (stripos($this->Source, 'theme_') === 0) {
                 return 'theme';
+            } elseif (stripos($this->Source, 'plugin_') === 0) {
+                //如果是plugin_主题名，还是判断为theme，修正历史遗留问题
+                $ts = $zbp->LoadThemes();
+                foreach ($ts as $t) {
+                    if ($this->Source == 'plugin_' . $t->id) {
+                        return 'theme';
+                    }
+                }
+
+                return 'plugin';
             } else {
                 return 'plugin';
             }
         }
         if ($name == 'NoRefresh') {
             return (bool) $this->Metas->norefresh;
+        }
+        if ($name == 'IsIncludeFile') {
+            return $this->protect_isincludefile;
         }
         foreach ($GLOBALS['hooks']['Filter_Plugin_Module_Get'] as $fpname => &$fpsignal) {
             $fpreturn = $fpname($this, $name);
@@ -105,8 +126,8 @@ class Module extends Base
                 return $fpreturn;
             }
         }
-        if ($this->Source == 'theme') {
-            if (!$this->FileName) {
+        if ($this->IsIncludeFile) {
+            if (empty($this->FileName)) {
                 return true;
             }
 
@@ -122,20 +143,15 @@ class Module extends Base
         }
 
         //防Module重复保存的机制
-        $m = $zbp->GetListType('Module',
-                    $zbp->db->sql->get()->select($zbp->table['Module'])
-                    ->where(array('=', $zbp->datainfo['Module']['FileName'][0], $this->FileName))
-                    ->sql
-                );
-        if (count($m) < 1) {
-            return parent::Save();
-        } else {
-            if ($this->ID == 0) {
-                return false;
-            }
-
-            return parent::Save();
+        $m = $zbp->GetListType(
+            'Module',
+            $zbp->db->sql->get()->select($zbp->table['Module'])->where(array('=', $zbp->datainfo['Module']['FileName'][0], $this->FileName))->sql
+        );
+        if (count($m) >= 1 && $this->ID == 0) {//如果已有同名，且新ID为0就不存
+            return false;
         }
+
+        return parent::Save();
     }
 
     /**
@@ -148,7 +164,7 @@ class Module extends Base
             if ($this->ID > 0 && $m->ID == $this->ID) {
                 unset($zbp->modules[$key]);
             }
-            if ($this->Source == 'theme') {
+            if ($this->IsIncludeFile) {
                 if ($this->FileName != '' && $m->FileName == $this->FileName) {
                     unset($zbp->modules[$key]);
                 }
@@ -167,8 +183,8 @@ class Module extends Base
                 return $fpreturn;
             }
         }
-        if ($this->Source == 'theme') {
-            if (!$this->FileName) {
+        if ($this->IsIncludeFile) {
+            if (empty($this->FileName)) {
                 return true;
             }
 
@@ -191,12 +207,28 @@ class Module extends Base
 
         if (isset(ModuleBuilder::$List[$this->FileName])) {
             if (isset(ModuleBuilder::$List[$this->FileName]['function'])) {
-                if (isset(ModuleBuilder::$List[$this->FileName]['parameters'])) {
-                    $this->Content = call_user_func(ModuleBuilder::$List[$this->FileName]['function'], ModuleBuilder::$List[$this->FileName]['parameters']);
-                } else {
-                    $this->Content = call_user_func(ModuleBuilder::$List[$this->FileName]['function']);
+                $f = str_replace(' ', '', ModuleBuilder::$List[$this->FileName]['function']);
+                $p = ModuleBuilder::$List[$this->FileName]['parameters'];
+                $p = is_array($p) ? $p : array();
+
+                if (function_exists($f)) {
+                    $this->Content = call_user_func_array($f, $p);
+                } elseif (strpos($f, '::') !== false) {
+                    $a = explode('::', $f);
+                    if (method_exists($a[0], $a[1])) {
+                        $this->Content = call_user_func_array($f, $p);
+                    }
+                } elseif (strpos($f, '->') !== false) {
+                    $f = str_replace(array('$', '{', '}'), '', $f);
+                    $a = explode('->', $f);
+                    if (is_callable(array($GLOBALS[$a[0]], $a[1]))) {
+                        $this->Content = call_user_func_array(array($GLOBALS[$a[0]], $a[1]), $p);
+                    }
                 }
             }
         }
+
+        return true;
     }
+
 }

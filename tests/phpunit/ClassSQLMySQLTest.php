@@ -1,22 +1,22 @@
 <?php
 
-class ClassSQLMySQLTest extends PHPUnit_Framework_TestCase
+class ClassSQL__MySQLTest extends PHPUnit\Framework\TestCase
 {
     protected $backupGlobalsBlacklist = array('zbp');
     protected static $db = null;
 
-    public function setUp()
+    public function setUp(): void
     {
-        self::$db = new SQLMySQL($GLOBALS['zbp']->db);
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
     }
 
-    public function tearDown()
+    public function tearDown(): void
     {
         self::$db->reset();
         self::$db = null;
     }
 
-    public function testExist()
+    public function testExist(): void
     {
         self::$db->exist('zbp_post', 'zbphp');
         $this->assertEquals('SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=\'zbphp\' AND TABLE_NAME=\'zbp_post\'', self::$db->sql);
@@ -25,7 +25,7 @@ class ClassSQLMySQLTest extends PHPUnit_Framework_TestCase
     public function testIndex()
     {
         self::$db->create('zbp_post')->index(array('indexname' => array('ddd', 'eee', 'eeee')));
-        $this->assertEquals('CREATE INDEX indexname ( ddd , eee , eeee ) ;', self::$db->sql);
+        $this->assertEquals('CREATE INDEX zbp_post_indexname ON zbp_post ( ddd , eee , eeee )', self::$db->sql);
     }
 
     public function testCreateTable()
@@ -50,52 +50,52 @@ class ClassSQLMySQLTest extends PHPUnit_Framework_TestCase
             'q' => array('q', 'datetime', '', ''),
             'r' => array('r', 'float', '', ''),
         );
-        self::$db->create('zbp_post')->data($tableData);
-        $this->assertEquals('CREATE TABLE IF NOT EXISTS zbp_post  ( a int(11) NOT NULL AUTO_INCREMENT, b tinyint(4) NOT NULL DEFAULT \'0\', c smallint(6) NOT NULL DEFAULT \'0\', d mediumint(9) NOT NULL DEFAULT \'0\', e int(11) NOT NULL DEFAULT \'0\', f bigint(20) NOT NULL DEFAULT \'0\', g int(11) NOT NULL DEFAULT \'0\', h timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, i tinyint(1) NOT NULL DEFAULT \'0\', j char() NOT NULL DEFAULT \'\', k varchar(250) NOT NULL DEFAULT \'\', l tinytext NOT NULL , m text NOT NULL , n mediumtext NOT NULL , o longtext NOT NULL , p longtext NOT NULL , q datetime NOT NULL, r float NOT NULL DEFAULT 0, PRIMARY KEY (a) ) ENGINE=MyISAM DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;', self::$db->sql);
+        self::$db->create('zbp_post')->data($tableData)->option(array('engine' => 'MyISAM'))->option(array('charset' => 'utf8'))->option(array('collate' => 'utf8_general_ci'));
+        $this->assertEquals('CREATE TABLE IF NOT EXISTS zbp_post  ( a int(11) NOT NULL AUTO_INCREMENT, b tinyint(4) NOT NULL DEFAULT \'0\', c smallint(6) NOT NULL DEFAULT \'0\', d mediumint(9) NOT NULL DEFAULT \'0\', e int(11) NOT NULL DEFAULT \'0\', f bigint(20) NOT NULL DEFAULT \'0\', g int(11) NOT NULL DEFAULT \'0\', h timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, i tinyint(1) NOT NULL DEFAULT \'0\', j char(250) NOT NULL DEFAULT \'\', k varchar(250) NOT NULL DEFAULT \'\', l tinytext NOT NULL , m text NOT NULL , n mediumtext NOT NULL , o longtext NOT NULL , p longtext NOT NULL , q datetime NOT NULL, r float NOT NULL DEFAULT 0, PRIMARY KEY (a) ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci AUTO_INCREMENT=1 ;', self::$db->sql);
     }
 
     public function testOption()
     {
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  USE INDEX (test) ',
+            'SELECT * FROM  zbp_post   USE INDEX ( test )',
             self::$db
                 ->select("zbp_post")
-                ->option(array('useindex' => 'test'))
+                ->useindex('test')
                 ->sql
         );
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  USE INDEX (a, b) ',
+            'SELECT * FROM  zbp_post   USE INDEX ( a, b )',
             self::$db
                 ->select("zbp_post")
-                ->option(array('useindex' => array('a, b')))
+                ->useindex(array('a, b'))
                 ->sql
         );
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  FORCE INDEX (test) ',
+            'SELECT * FROM  zbp_post   FORCE INDEX ( test )',
             self::$db
                 ->select("zbp_post")
-                ->option(array('forceindex' => 'test'))
+                ->forceindex('test')
                 ->sql
         );
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  FORCE INDEX (a, b) ',
+            'SELECT * FROM  zbp_post   FORCE INDEX ( a, b )',
             self::$db
                 ->select("zbp_post")
-                ->option(array('forceindex' => array('a, b')))
+                ->forceindex('a, b')
                 ->sql
         );
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  IGNORE INDEX (test) ',
+            'SELECT * FROM  zbp_post   IGNORE INDEX ( test )',
             self::$db
                 ->select("zbp_post")
-                ->option(array('ignoreindex' => 'test'))
+                ->ignoreindex('test')
                 ->sql
         );
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  IGNORE INDEX (a, b) ',
+            'SELECT * FROM  zbp_post   IGNORE INDEX ( a, b )',
             self::$db
                 ->select("zbp_post")
-                ->option(array('ignoreindex' => array('a, b')))
+                ->ignoreindex(array('a, b'))
                 ->sql
         );
         $this->assertEquals(
@@ -119,5 +119,29 @@ class ClassSQLMySQLTest extends PHPUnit_Framework_TestCase
                 ->option(array('sql_buffer_result' => true))
                 ->sql
         );
+        $this->assertEquals(
+            'SELECT  log_ID  FROM zbp_post AS p STRAIGHT_JOIN zbp_postrelation AS pr ON p.log_ID = pr.pr_PostID WHERE 1 = 1',
+                  self::$db->selectany('log_ID')
+                           ->from(array('zbp_post'=>'p'))
+                           ->innerjoin(array('zbp_postrelation'=>'pr'))
+                           ->on('p.log_ID = pr.pr_PostID')
+                           ->where('1 = 1')
+                           ->option(array('straight_join' => true))
+                           ->sql
+        );
+        $tableData = array(
+            'a' => array('a', 'integer', '', 0),
+            'i' => array('i', 'boolean', '', false),
+            'j' => array('j', 'string', 'char250', ''),
+            'k' => array('k', 'string', 250, ''),
+            'o' => array('o', 'string', 'longtext', ''),
+            'p' => array('p', 'string', '', ''),
+        );
+        self::$db->create('zbp_post2')->data($tableData)
+        ->option(array('temporary' => true))
+        ->option(array('engine' => 'Memory'))
+        ->option(array('charset' => 'utf8'))
+        ->option(array('collate' => 'utf8_general_ci'));
+        $this->assertEquals('CREATE TEMPORARY TABLE IF NOT EXISTS zbp_post2  ( a int(11) NOT NULL AUTO_INCREMENT, i tinyint(1) NOT NULL DEFAULT \'0\', j char(250) NOT NULL DEFAULT \'\', k varchar(250) NOT NULL DEFAULT \'\', o longtext NOT NULL , p longtext NOT NULL , PRIMARY KEY (a) ) ENGINE=Memory DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci AUTO_INCREMENT=1 ;', self::$db->sql);
     }
 }

@@ -12,8 +12,24 @@ $Totoro = null;
 function Totoro_init()
 {
     require_once TOTORO_PATH . '/inc/totoro.php';
+
     global $Totoro;
-    $Totoro = new Totoro_Class();
+    if (!is_object($Totoro)) {
+        $Totoro = new Totoro_Class();
+    }
+}
+
+$Totoro_Include_File = array();
+
+function Totoro_Include($filename)
+{
+    global $Totoro_Include_File;
+    if (!isset($Totoro_Include_File[$filename])) {
+        $r = include $filename;
+        $Totoro_Include_File[$filename] = $r;
+        return $r;
+    }
+    return $Totoro_Include_File[$filename];
 }
 
 function ActivePlugin_Totoro()
@@ -31,7 +47,7 @@ function Totoro_Admin_CommentMng_SubMenu()
 {
     global $zbp;
     echo '<a href="' . $zbp->host . 'zb_users/plugin/Totoro/main.php"><span class="m-right">Totoro设置</span></a>';
-    echo '<script src="' . $zbp->host . 'zb_users/plugin/Totoro/submenu.js"></script>';
+    //echo '<script src="' . $zbp->host . 'zb_users/plugin/Totoro/submenu.js"></script>';
 }
 
 function Totoro_PostComment_Core(&$comment)

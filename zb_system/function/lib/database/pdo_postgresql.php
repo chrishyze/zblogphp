@@ -8,22 +8,39 @@ if (!defined('ZBP_PATH')) {
  */
 class Database__PDO_PostgreSQL implements Database__Interface
 {
+
     public $type = 'postgresql';
+
     public $version = '';
+
+    public $error = array();
 
     /**
      * @var string|null 数据库名前缀
      */
     public $dbpre = null;
+
     private $db = null; //数据库连接实例
+
     /**
      * @var string|null 数据库名
      */
     public $dbname = null;
+
     /**
      * @var DbSql|null DbSql实例
      */
     public $sql = null;
+
+    /**
+     * @var 字符集
+     */
+    public $charset = 'utf8';
+
+    /**
+     * @var 字符排序
+     */
+    public $collate = null;
 
     /**
      * 构造函数，实例化$sql参数.
@@ -69,7 +86,29 @@ class Database__PDO_PostgreSQL implements Database__Interface
         }
         $this->db = $db_link;
         $this->dbpre = $array[4];
+        $myver = $this->db->getAttribute(PDO::ATTR_SERVER_VERSION);
+        $this->version = SplitAndGet($myver, '-', 0);
 
+        return true;
+    }
+
+    /**
+     * @param string $dbpgsql_server
+     * @param string $dbpgsql_port
+     * @param string $dbpgsql_username
+     * @param string $dbpgsql_password
+     * @param string $dbpgsql_name
+     */
+    public function CreateDB($dbpgsql_server, $dbpgsql_port, $dbpgsql_username, $dbpgsql_password, $dbpgsql_name)
+    {
+        $db_link = new PDO('pgsql:host=' . $dbpgsql_server . ';port=' . $dbpgsql_port, $dbpgsql_username, $dbpgsql_password);
+        $this->db = $db_link;
+        $this->dbname = $dbpgsql_name;
+
+        $db_link->query("SET client_encoding='UTF-8';");
+
+        $r = $this->db->exec($this->sql->Filter('CREATE DATABASE ' . $dbpgsql_name));
+        $this->LogsError();
         return true;
     }
 
@@ -101,6 +140,7 @@ class Database__PDO_PostgreSQL implements Database__Interface
             $s = trim($s);
             if ($s != '') {
                 $this->db->exec($this->sql->Filter($s));
+                $this->LogsError();
             }
         }
     }
@@ -115,6 +155,11 @@ class Database__PDO_PostgreSQL implements Database__Interface
         //$query=str_replace('%pre%', $this->dbpre, $query);
         // 遍历出来
         $results = $this->db->query($this->sql->Filter($query));
+        $e = $this->db->errorCode();
+        if ($e > 0) {
+            trigger_error(implode(' ', $this->db->errorInfo()), E_USER_NOTICE);
+        }
+        $this->LogsError();
         //fetch || fetchAll
         if (is_object($results)) {
             return $results->fetchAll();
@@ -126,23 +171,27 @@ class Database__PDO_PostgreSQL implements Database__Interface
     /**
      * @param $query
      *
-     * @return bool|mysqli_result
+     * @return bool|pgsql_result
      */
     public function Update($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return $this->db->query($this->sql->Filter($query));
+        $r = $this->db->query($this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
      * @param $query
      *
-     * @return bool|mysqli_result
+     * @return bool|pgsql_result
      */
     public function Delete($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return $this->db->query($this->sql->Filter($query));
+        $r = $this->db->query($this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -154,10 +203,10 @@ class Database__PDO_PostgreSQL implements Database__Interface
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
         $this->db->query($this->sql->Filter($query));
+        $this->LogsError();
         $seq = explode(' ', $query, 4);
         $seq = $seq[2] . '_seq';
         $id = $this->db->lastInsertId($seq);
-
         return $id;
     }
 
@@ -165,7 +214,7 @@ class Database__PDO_PostgreSQL implements Database__Interface
      * @param $table
      * @param $datainfo
      */
-    public function CreateTable($table, $datainfo)
+    public function CreateTable($table, $datainfo, $engine = null, $charset = null, $collate = null)
     {
         $this->QueryMulit($this->sql->CreateTable($table, $datainfo));
     }
@@ -202,4 +251,13 @@ class Database__PDO_PostgreSQL implements Database__Interface
             return false;
         }
     }
+
+    private function LogsError()
+    {
+        $e = $this->db->errorCode();
+        if ($e > 0) {
+            $this->error[] = array($e, $this->db->errorInfo());
+        }
+    }
+
 }

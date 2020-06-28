@@ -20,34 +20,60 @@ if (!defined('ZBP_PATH')) {
  */
 class SQL__Global
 {
+
     /**
      * @var string 类名
      * @description 如果是PHP 5.3的话，可以用get_called_class
      */
     public $className = __CLASS__;
 
-    private $_sql = array();
+    protected $pri_sql = array();
+
     protected $option = array(
         'whereKeyword' => 'WHERE',
     );
+
     protected $method = 'SELECT';
+
     protected $table = array();
+
     protected $data = array();
+
     protected $columns = array();
+
     protected $where = array();
+
     protected $join = array();
+
     protected $orderBy = array();
+
     protected $groupBy = array();
+
     protected $having = array();
+
     protected $index = array();
-    private $methodKeyword = array('SELECT', 'INSERT', 'DROP', 'DELETE', 'CREATE', 'UPDATE');
-    private $selectFunctionKeyword = array('COUNT', 'MIN', 'MAX', 'SUM');
-    private $otherKeyword = array('FIELD', 'INDEX');
+
+    private $methodKeyword = array('ALTER', 'SELECT', 'INSERT', 'DROP', 'DELETE', 'CREATE', 'UPDATE', 'TRUNCATE');
+
+    private $selectFunctionKeyword = array('COUNT', 'MIN', 'MAX', 'SUM', 'AVG');
+
+    private $otherKeyword = array('INDEX', 'TABLE', 'DATABASE');
+
+    private $extendKeyword = array('SELECTANY', 'FROM', 'IFEXISTS', 'IFNOTEXISTS', 'INNERJOIN', 'LEFTJOIN', 'RIGHTJOIN', 'JOIN', 'FULLJOIN', 'UNION', 'USEINDEX', 'FORCEINDEX', 'IGNOREINDEX', 'ON', 'DISTINCT', 'DISTINCTROW', 'UNIONALL', 'RANDOM', 'TRANSACTION');
+
+    private $complexKeyword = array('ADDCOLUMN', 'DROPCOLUMN', 'ALTERCOLUMN');
+
+    protected $extend = array();
+
+    protected $other = array();
+
+    protected $complex = array();
 
     /**
      * @var null 数据库连接实例
      */
     private $db = null;
+
     /**
      * @var null|string 数据库类型名称
      */
@@ -95,6 +121,9 @@ class SQL__Global
         $upperKeyword = strtoupper($callName);
         if (in_array($upperKeyword, $this->methodKeyword)) {
             $this->method = $upperKeyword;
+            if (!isset($argu[0])) {
+                $argu[0] = '';
+            }
             $this->table = is_array($argu[0]) ? $argu[0] : $argu;
             $this->table = str_replace('%pre%', $this->db->dbpre, $this->table);
 
@@ -102,38 +131,62 @@ class SQL__Global
         } elseif (in_array($upperKeyword, $this->otherKeyword)) {
             if ($upperKeyword == 'INDEX') {
                 foreach ($argu as $key => $value) {
+                    if (!is_array($value)) {
+                        $this->other[$upperKeyword] = $argu;
+                        break;
+                    }
                     //is_array($argu[0]) ? $argu[0] : $argu;
                     $this->index[key($value)] = current($value);
                 }
-            } // @codeCoverageIgnoreStart
-            else {
+            } elseif ($upperKeyword == 'TABLE' || $upperKeyword == 'DATABASE') {
+                $this->other[$upperKeyword] = $argu;
+            } else {
                 $this->data = is_array($argu[0]) ? $argu[0] : $argu;
             }
-            // @codeCoverageIgnoreEnd
-
             return $this;
         } elseif (in_array($upperKeyword, $this->selectFunctionKeyword)) {
             /*
              * Count
-             * @example count('log_ID')
-             * @example count('log_ID', 'countLogId')
+             * @example count(log_ID)
+             * @example count(log_ID, countLogId)
              * @example count(array('log_Id', 'countLogId'))
+             * @example count(array('log_Id'=>'countLogId'))
              * @return [type] [description]
              */
+
             if (count($argu) == 1) {
                 $arg = $argu[0];
                 if (is_string($arg)) {
                     $this->columns[] = "$upperKeyword($arg)";
                 } else {
-                    $this->columns[] = "$upperKeyword($arg[0]) AS $arg[1]";
+                    if (is_integer(key($arg))) {
+                        if (count($arg) > 1) {
+                            $this->columns[] = "$upperKeyword($arg[0]) AS $arg[1]";
+                        } else {
+                            $this->columns[] = "$upperKeyword($arg[0])";
+                        }
+                    } else {
+                        $this->columns[] = "$upperKeyword(" . key($arg) . ") AS " . current($arg);
+                    }
                 }
             } else {
                 $this->columns[] = "$upperKeyword($argu[0]) AS $argu[1]";
             }
 
             return $this;
-        } // @codeCoverageIgnoreStart
-        else {
+        } elseif (in_array($upperKeyword, $this->extendKeyword)) {
+            $this->extend[$upperKeyword] = $argu;
+            if ($upperKeyword == 'DISTINCT' || $upperKeyword == 'DISTINCTROW' || $upperKeyword == 'SELECTANY') {
+                foreach ($argu as $key => $value) {
+                    $this->column($value);
+                }
+            }
+            return $this;
+        } elseif (in_array($upperKeyword, $this->complexKeyword)) {
+            $this->complex[$upperKeyword][] = implode(' ', $argu);
+
+            return $this;
+        } else {
             $lowerKeyword = strtolower($callName);
             if (is_callable($this, $lowerKeyword)) {
                 return call_user_func_array(array($this, $lowerKeyword), $argu);
@@ -152,7 +205,12 @@ class SQL__Global
 
             return $ret;
         }
+        if ($upperKeyword == "QUERY") {
+            $ret = $this->query();
+            $this->reset();
 
+            return $ret;
+        }
         return $this->$getName;
     }
 
@@ -180,9 +238,9 @@ class SQL__Global
      *
      * @param $sql
      */
-    public function _sqlPush($sql)
+    public function sqlPush($sql)
     {
-        $this->_sql[] = $sql;
+        $this->pri_sql[] = $sql;
     }
 
     /**
@@ -222,15 +280,15 @@ class SQL__Global
 
     protected function columnLoaderArray($columns)
     {
-        foreach ($columns as $column) {
+        foreach ($columns as $key => $column) {
             if (is_array($column)) {
-                if (count($column) > 1) {
-                    $this->columns[] = "$column[0] AS $column[1]";
-                } else {
-                    $this->columns[] = $column[0];
-                }
+                $this->columnLoaderArray($column);
             } else {
-                $this->columns[] = $column;
+                if (is_integer($key)) {
+                    $this->columns[] = $column;
+                } else {
+                    $this->columns[] = $key . ' AS ' . $column;
+                }
             }
         }
     }
@@ -244,31 +302,17 @@ class SQL__Global
      */
     public function column($columns)
     {
+        $args = func_get_args();
         if (!$this->validateParamater($columns)) {
             return $this;
         }
-        $nums = func_num_args();
-        if ($nums == 1) {
-            if (is_array($columns)) {
-                if (count($columns) == 2) {
-                    if (is_string($columns[1])) {
-                        $this->columns[] = "$columns[0] AS $columns[1]";
-                    } else {
-                        $this->columnLoaderArray($columns);
-                    }
-                } elseif (count($columns) == 1) {
-                    $this->columns[] = "$columns[0]";
-                } else {
-                    $this->columnLoaderArray($columns);
-                }
+        foreach ($args as $key => $value) {
+            if (is_array($value)) {
+                $this->columnLoaderArray($value);
             } else {
-                $this->columns[] = $columns;
+                $this->columns[] = $value;
             }
-        } else {
-            $args = func_get_args(); // Fuck PHP 5.2
-            $this->columnLoaderArray($args);
         }
-
         return $this;
     }
 
@@ -302,7 +346,6 @@ class SQL__Global
                 $this->option['limit'] = $arg;
             }
         }
-
         return $this;
     }
 
@@ -346,17 +389,24 @@ class SQL__Global
      */
     public function having($having)
     {
+        $args = func_get_args();
         if (!$this->validateParamater($having)) {
             return $this;
-        } elseif (is_array($having)) {
+        }/* elseif (is_array($having)) {
             $this->having = array_merge($this->having, $having);
         } elseif (func_num_args() > 1) {
             $args = func_get_args(); // Fuck PHP 5.2
             $this->having = array_merge($this->having, $args);
         } else {
             $this->having[] = $having;
+        }*/
+        foreach ($args as $key => $value) {
+            if (is_array($value)) {
+                $this->having[] = $this->buildWhere_Single($value);
+            } else {
+                $this->having[] = $value;
+            }
         }
-
         return $this;
     }
 
@@ -374,12 +424,11 @@ class SQL__Global
         } elseif (is_array($groupBy)) {
             $this->groupBy = array_merge($this->groupBy, $groupBy);
         } elseif (func_num_args() > 1) {
-            $args = func_get_args(); // Fuck PHP 5.2
+            $args = call_user_func('func_get_args'); // Fuck PHP 5.2
             $this->groupBy = array_merge($this->groupBy, $args);
         } else {
             $this->groupBy[] = $groupBy;
         }
-
         return $this;
     }
 
@@ -402,7 +451,6 @@ class SQL__Global
             if (!is_array($ret)) {
                 $ret = array($value => '');
             }
-
             $this->orderBy = array_merge_recursive($this->orderBy, $ret);
         }
 
@@ -428,7 +476,7 @@ class SQL__Global
     }
 
     /**
-     * @todo
+     * 检查表是否存在(子类已有实现)
      *
      * @param string $table
      * @param string $dbname
@@ -437,57 +485,61 @@ class SQL__Global
      */
     public function exist($table, $dbname = '')
     {
-        return $this;
-    }
-
-    /**
-     * @param $sql
-     */
-    public function query($sql = null)
-    {
-        if (is_null($sql)) {
-            $sql = $this->sql(); // wtf is it??
-        }
+        // Do nothing yet
     }
 
     private function sql()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
+
         if (count($sql) == 0) {
             $sql = array("$this->method");
             $callableMethod = 'build' . ucfirst($this->method);
             $this->$callableMethod();
         }
 
-        //logs(implode(' ', $sql) . "\r\n");
-
         return implode(' ', $sql);
+    }
+
+    private function query()
+    {
+        $sql = $this->sql();
+        return $this->db->Query($sql);
     }
 
     protected function buildTable()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
         $table = &$this->table;
         $tableData = array();
 
         //array_walk
         foreach ($table as $index => $tableValue) {
             if (is_string($tableValue)) {
-                $tableData[] = " $tableValue "; // 为保证兼容性，不加反引号
+                if (!is_integer($index)) {
+                    $tableData[] = " $index AS $tableValue "; //给表加AS
+                } else {
+                    $tableData[] = " $tableValue "; // 为保证兼容性，不加反引号
+                }
             }
             if (is_array($tableValue)) {
                 $tableData[] = " $tableValue[0] $tableValue[1] ";
             }
         }
-        $sql[] = implode($tableData, ", ");
+        $sql[] = implode(", ", $tableData);
     }
 
     protected function buildColumn()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
         $columns = &$this->columns;
+        foreach ($columns as $key => $value) {
+            if (empty($value)) {
+                unset($columns[$key]);
+            }
+        }
         if (count($columns) > 0) {
-            $selectStr = implode($columns, ',');
+            $selectStr = implode(', ', $columns);
             $sql[] = " {$selectStr} ";
         } else {
             $sql[] = "*";
@@ -496,13 +548,14 @@ class SQL__Global
 
     protected function buildWhere($originalWhere = null, $whereKeyword = null)
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
         $where = is_null($originalWhere) ? $this->where : $originalWhere;
         if (count($where) == 0) {
             return;
         }
         $sql[] = is_null($whereKeyword) ? $this->option['whereKeyword'] : $whereKeyword;
         $whereData = array();
+
         foreach ($where as $index => $value) {
             if (is_string($value)) {
                 $whereData[] = $value;
@@ -516,9 +569,21 @@ class SQL__Global
     protected function buildWhere_Single($value)
     {
         $whereData = '';
+        if (is_array($value[0])) {
+            return $this->buildWhere_Single($value[0]);
+        }
         $eq = strtoupper($value[0]);
-        if (in_array($eq, array('=', '<>', '>', '<', '>=', '<=', 'NOT LIKE', 'LIKE', 'ILIKE', 'NOT ILIKE'))) {
+        if (in_array($eq, array('=', '<>', '>', '<', '>=', '!=', '<=', 'NOT LIKE', 'LIKE', 'ILIKE', 'NOT ILIKE'))) {
             $x = (string) $value[1];
+            if ($this->db->type != 'postgresql' && $eq == 'ILIKE') {
+                $eq = 'LIKE';
+            }
+            if ($this->db->type != 'postgresql' && $eq == 'NOT ILIKE') {
+                $eq = 'NOT LIKE';
+            }
+            if ($eq == '!=') {
+                $eq = '<>';
+            }
             $y = $this->db->EscapeString((string) $value[2]);
             $whereData = " $x $eq '$y' ";
         } elseif (($eq == 'AND') && count($value) > 2) {
@@ -531,8 +596,16 @@ class SQL__Global
             }
             $whereData = " ( " . implode(' AND ', $sqlArray) . ') ';
         } elseif ($eq == 'EXISTS' || $eq == 'NOT EXISTS') {
-            if (!isset($value[2])) {
+            if (isset($value[1]) && !isset($value[2])) {
                 $whereData = " $eq ( $value[1] ) ";
+            } else {
+                $whereData = " (1 = 1) ";
+
+                return $whereData;
+            }
+        } elseif ($eq == 'ANY' || $eq == 'ALL' || $eq == 'SOME') {
+            if (isset($value[3])) {
+                $whereData = "$value[1] $value[2] $eq($value[3]) ";
             } else {
                 $whereData = " (1 = 1) ";
 
@@ -540,45 +613,51 @@ class SQL__Global
             }
         } elseif ($eq == 'BETWEEN') {
             $whereData = " ($value[1] BETWEEN '$value[2]' AND '$value[3]') ";
-        } elseif ($eq == 'SEARCH') {
+        } elseif ($eq == 'SEARCH') { //SEARCH模式搜索字符自动两边加%
             $searchCount = count($value);
             $sqlSearch = array();
-            for ($i = 1; $i <= $searchCount - 1 - 1; $i++) {
+            for ($i = 1; $i <= ($searchCount - 1 - 1); $i++) {
                 $x = (string) $value[$i];
-                $y = $this->db->EscapeString((string) $value[$searchCount - 1]);
-                $sqlSearch[] = " ($x LIKE '%$y%') ";
+                $y = $this->db->EscapeString((string) $value[($searchCount - 1)]);
+                if ($eq == 'SEARCH') {
+                    $sqlSearch[] = " ($x LIKE '%$y%') ";
+                }
             }
             $whereData = " ((1 = 1) AND (" . implode(' OR ', $sqlSearch) . ') )';
-        } elseif (($eq == 'OR' || $eq == 'ARRAY') && count($value) > 2) {
+        } elseif (($eq == 'OR' || $eq == 'ARRAY') && count($value) > 2) { //此块是处理array('or','条件1','条件2','条件3')时
             $sqlArray = array();
             foreach ($value as $x => $y) {
-                if ($x == 0) {
+                if ($x == 0) { //当是or就跳开
                     continue;
                 }
                 $sqlArray[] = $this->buildWhere_Single($y);
             }
             $whereData = " ( " . implode(' OR ', $sqlArray) . ') ';
-        } elseif ($eq == 'ARRAY' || $eq == 'NOT ARRAY' || $eq == 'LIKE ARRAY' || $eq == 'ILIKE ARRAY' || $eq == 'ARRAY_LIKE' || $eq == 'ARRAY_ILIKE') {
-            if ($eq == 'ARRAY') {
+        } elseif ($eq == 'OR' || $eq == 'ARRAY' || $eq == 'NOT ARRAY' || $eq == 'LIKE ARRAY' || $eq == 'ILIKE ARRAY' || $eq == 'ARRAY_LIKE' || $eq == 'ARRAY_ILIKE') {
+            if ($eq == 'OR' || $eq == 'ARRAY') {
                 $symbol = '=';
             } elseif ($eq == 'NOT ARRAY') {
                 $symbol = '<>';
             } elseif ($eq == 'LIKE ARRAY' || $eq == 'ARRAY_LIKE') {
                 $symbol = 'LIKE';
             } elseif ($eq == 'ILIKE ARRAY' || $eq == 'ARRAY_ILIKE') {
-                $symbol = 'ILIKE';
+                $symbol = ($this->db->type != 'postgresql') ? 'LIKE' : 'ILIKE';
             } else {
                 $symbol = '=';
             }
             $sqlArray = array();
-            if (!is_array($value[1])) {
+            if (!is_array($value[1]) || empty($value[1])) {
                 $whereData = " (1 = 1) ";
 
                 return $whereData;
             }
             foreach ($value[1] as $x => $y) {
-                $y[1] = $this->db->EscapeString($y[1]);
-                $sqlArray[] = " $y[0] $symbol '$y[1]' ";
+                if (count($y) == 2) {
+                    $y[1] = $this->db->EscapeString($y[1]);
+                    $sqlArray[] = " $y[0] $symbol '$y[1]' ";
+                } else {
+                    $sqlArray[] = $this->buildWhere_Single($y);
+                }
             }
             $whereData = " ((1 = 1) AND (" . implode(' OR ', $sqlArray) . ') )';
         } elseif ($eq == 'IN' || $eq == 'NOT IN') {
@@ -626,6 +705,12 @@ class SQL__Global
             $whereData = "($value[1] LIKE '%$sqlMeta%')";
         } elseif ($eq == "CUSTOM") {
             $whereData = $value[1];
+        } elseif (count($value) == 1) {
+            if (is_array($value[0])) {
+                $whereData = $this->buildWhere_Single($value[0]);
+            } else {
+                $whereData = ' ( ' . $value[0] . ' ) ';
+            }
         }
 
         return $whereData;
@@ -633,7 +718,7 @@ class SQL__Global
 
     protected function buildOrderBy()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
         if (count($this->orderBy) == 0) {
             return;
         }
@@ -645,22 +730,16 @@ class SQL__Global
             if (is_int($key)) {
                 $orderByData[] = "$value";
             } else {
+                $value = strtoupper($value);
                 $orderByData[] = "$key $value";
             }
         }
         $sql[] = implode(', ', $orderByData);
     }
 
-    /**
-     * @todo
-     */
-    protected function buildJoin()
-    {
-    }
-
     protected function buildGroupBy()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
         if (count($this->groupBy) == 0) {
             return;
         }
@@ -675,7 +754,7 @@ class SQL__Global
 
     protected function buildHaving()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
         if (count($this->having) == 0) {
             return;
         }
@@ -686,7 +765,7 @@ class SQL__Global
 
     protected function buildLimit()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
 
         if (isset($this->option['limit'])) {
             if ($this->option['limit'] > 0) {
@@ -699,11 +778,9 @@ class SQL__Global
         }
     }
 
-    /**
-     * @todo
-     **/
     protected function buildPagebar()
     {
+        // Do nothing yet
     }
 
     protected function buildBeforeWhere()
@@ -716,26 +793,342 @@ class SQL__Global
         // Do nothing yet
     }
 
+    protected function buildALTER()
+    {
+        $sql = &$this->pri_sql;
+
+        $sql[] = 'TABLE';
+        $this->buildTable();
+        if (array_key_exists('ADDCOLUMN', $this->complex)) {
+            $this->buildADDCOLUMN();
+        } elseif (array_key_exists('DROPCOLUMN', $this->complex)) {
+            $this->buildDROPCOLUMN();
+        } elseif (array_key_exists('ALTERCOLUMN', $this->complex)) {
+            $this->buildALTERCOLUMN();
+        }
+    }
+
     protected function buildSelect()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
 
-        // Unimplemented select2count
+        if (array_key_exists('TRANSACTION', $this->extend)) {
+            $this->buildTransaction();
+            return;
+        }
+
+        if (array_key_exists('UNION', $this->extend)) {
+            $this->buildUnion();
+            return;
+        }
+        if (array_key_exists('UNIONALL', $this->extend)) {
+            $this->buildUnionALL();
+            return;
+        }
+        if (array_key_exists('DISTINCT', $this->extend)) {
+            $this->buildDISTINCT();
+        }
+        if (array_key_exists('DISTINCTROW', $this->extend)) {
+            $this->buildDISTINCTROW();
+        }
+        if (array_key_exists('SELECTANY', $this->extend)) {
+            $this->buildSelectAny();
+        }
+
+        if (get_class($this) == 'SQL__MySQL') {
+            if (isset($this->option['high_priority'])) {
+                $sql[] = 'HIGH_PRIORITY';
+            }
+        }
+
         $this->buildColumn();
-        $sql[] = 'FROM';
-        $this->buildTable();
+        if (array_key_exists('FROM', $this->extend)) {
+            $this->buildFrom();
+        } else {
+            $sql[] = 'FROM';
+            $this->buildTable();
+        }
+        if (get_class($this) == 'SQL__MySQL' && array_key_exists('USEINDEX', $this->extend)) {
+            $this->buildUSEINDEX();
+        }
+        if (get_class($this) == 'SQL__MySQL' && array_key_exists('FORCEINDEX', $this->extend)) {
+            $this->buildFORCEINDEX();
+        }
+        if (get_class($this) == 'SQL__MySQL' && array_key_exists('IGNOREINDEX', $this->extend)) {
+            $this->buildIGNOREINDEX();
+        }
+
+        if (array_key_exists('JOIN', $this->extend)) {
+            $this->buildJOIN();
+            if (array_key_exists('ON', $this->extend)) {
+                $this->buildON();
+            }
+        } elseif (array_key_exists('INNERJOIN', $this->extend)) {
+            $this->buildINNERJOIN();
+            if (array_key_exists('ON', $this->extend)) {
+                $this->buildON();
+            }
+        } elseif (array_key_exists('LEFTJOIN', $this->extend)) {
+            $this->buildLEFTJOIN();
+            $this->buildON();
+        } elseif (array_key_exists('RIGHTJOIN', $this->extend)) {
+            $this->buildRIGHTJOIN();
+            $this->buildON();
+        } elseif (array_key_exists('FULLJOIN', $this->extend)) {
+            $this->buildFULLJOIN();
+            if (array_key_exists('ON', $this->extend)) {
+                $this->buildON();
+            }
+        }
+
         $this->buildBeforeWhere();
+
+        //if (get_class($this) == 'SQL__MySQL' && array_key_exists('RANDOM', $this->extend)) {
+        if (array_key_exists('RANDOM', $this->extend)) {
+            $this->buildRandomBefore();
+        }
+
         $this->buildWhere();
         $this->buildGroupBy();
         $this->buildHaving();
-        $this->buildOrderBy();
-        $this->buildLimit();
+
+        if (array_key_exists('RANDOM', $this->extend)) {
+            $this->buildRandom();
+        } else {
+            $this->buildOrderBy();
+            $this->buildLimit();
+        }
+
         $this->buildOthers();
+    }
+
+    protected function buildDISTINCT()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = 'DISTINCT';
+    }
+
+    protected function buildDISTINCTROW()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = 'DISTINCTROW';
+    }
+
+    protected function buildSELECTANY()
+    {
+        $sql = &$this->pri_sql;
+        //no use
+    }
+
+    protected function buildADDCOLUMN()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = ' ';
+        foreach ($this->complex['ADDCOLUMN'] as $key => $value) {
+            $this->complex['ADDCOLUMN'][$key] = 'ADD COLUMN ' . $this->complex['ADDCOLUMN'][$key];
+        }
+        $sql[] = implode(' ,', $this->complex['ADDCOLUMN']);
+    }
+
+    protected function buildALTERCOLUMN()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = ' ';
+        foreach ($this->complex['ALTERCOLUMN'] as $key => $value) {
+            if (get_class($this) == 'SQL__MySQL') {
+                $this->complex['ALTERCOLUMN'][$key] = 'MODIFY ' . $this->complex['ALTERCOLUMN'][$key];
+            }
+            if (get_class($this) == 'SQL__PostgreSQL') {
+                $this->complex['ALTERCOLUMN'][$key] = 'ALTER COLUMN ' . $this->complex['ALTERCOLUMN'][$key];
+            }
+        }
+        $sql[] = implode(' ,', $this->complex['ALTERCOLUMN']);
+    }
+
+    protected function buildDROPCOLUMN()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = ' ';
+        foreach ($this->complex['DROPCOLUMN'] as $key => $value) {
+            $this->complex['DROPCOLUMN'][$key] = 'DROP COLUMN ' . $this->complex['DROPCOLUMN'][$key];
+        }
+        $sql[] = implode(' ,', $this->complex['DROPCOLUMN']);
+    }
+
+    protected function buildUSEINDEX()
+    {
+        $sql = &$this->pri_sql;
+        foreach ($this->extend['USEINDEX'] as $key => $value) {
+            if (is_array($value)) {
+                $this->extend['USEINDEX'][$key] = implode(' ', $value);
+            }
+        }
+        $sql[] = ' USE INDEX (';
+        $sql[] = implode(' ,', $this->extend['USEINDEX']);
+        $sql[] = ')';
+    }
+
+    protected function buildFORCEINDEX()
+    {
+        $sql = &$this->pri_sql;
+        foreach ($this->extend['FORCEINDEX'] as $key => $value) {
+            if (is_array($value)) {
+                $this->extend['FORCEINDEX'][$key] = implode(' ', $value);
+            }
+        }
+        $sql[] = ' FORCE INDEX (';
+        $sql[] = implode(' ,', $this->extend['FORCEINDEX']);
+        $sql[] = ')';
+    }
+
+    protected function buildIGNOREINDEX()
+    {
+        $sql = &$this->pri_sql;
+        foreach ($this->extend['IGNOREINDEX'] as $key => $value) {
+            if (is_array($value)) {
+                $this->extend['IGNOREINDEX'][$key] = implode(' ', $value);
+            }
+        }
+        $sql[] = ' IGNORE INDEX (';
+        $sql[] = implode(' ,', $this->extend['IGNOREINDEX']);
+        $sql[] = ')';
+    }
+
+    protected function buildON()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = 'ON';
+        $sql[] = implode(' AND ', $this->extend['ON']);
+    }
+
+    protected function buildJOIN()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = 'JOIN';
+        if (is_array($this->extend['JOIN'][0]) == true) {
+            $sql[] = key($this->extend['JOIN'][0]);
+            $sql[] = 'AS';
+            $sql[] = current($this->extend['JOIN'][0]);
+        } else {
+            $sql[] = implode(' ,', $this->extend['JOIN']);
+        }
+    }
+
+    protected function buildINNERJOIN()
+    {
+        $sql = &$this->pri_sql;
+        $s = 'INNER JOIN';
+        if (get_class($this) == 'SQL__MySQL') {
+            if (isset($this->option['straight_join'])) {
+                $s = 'STRAIGHT_JOIN';
+            }
+        }
+        $sql[] = $s;
+        if (is_array($this->extend['INNERJOIN'][0]) == true) {
+            $sql[] = key($this->extend['INNERJOIN'][0]);
+            $sql[] = 'AS';
+            $sql[] = current($this->extend['INNERJOIN'][0]);
+        } else {
+            $sql[] = implode(' ,', $this->extend['INNERJOIN']);
+        }
+    }
+
+    protected function buildLEFTJOIN()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = 'LEFT JOIN';
+        if (is_array($this->extend['LEFTJOIN'][0]) == true) {
+            $sql[] = key($this->extend['LEFTJOIN'][0]);
+            $sql[] = 'AS';
+            $sql[] = current($this->extend['LEFTJOIN'][0]);
+        } else {
+            $sql[] = implode(' ,', $this->extend['LEFTJOIN']);
+        }
+    }
+
+    protected function buildRIGHTJOIN()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = 'RIGHT JOIN';
+        if (is_array($this->extend['RIGHTJOIN'][0]) == true) {
+            $sql[] = key($this->extend['RIGHTJOIN'][0]);
+            $sql[] = ' AS ';
+            $sql[] = current($this->extend['RIGHTJOIN'][0]);
+        } else {
+            $sql[] = implode(' ,', $this->extend['RIGHTJOIN']);
+        }
+    }
+
+    protected function buildFULLJOIN()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = 'FULL JOIN';
+        if (is_array($this->extend['FULLJOIN'][0]) == true) {
+            $sql[] = key($this->extend['FULLJOIN'][0]);
+            $sql[] = 'AS';
+            $sql[] = current($this->extend['FULLJOIN'][0]);
+        } else {
+            $sql[] = implode(' ,', $this->extend['FULLJOIN']);
+        }
+    }
+
+    protected function buildFROM()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = 'FROM';
+        $array = array();
+        foreach ($this->extend['FROM'] as $key => $value) {
+            if (is_array($value)) {
+                $array[] = key($value) . ' AS ' . current($value);
+            } else {
+                $array[] = $value;
+            }
+        }
+        $sql[] = implode(' ,', $array);
+    }
+
+    protected function buildUnion()
+    {
+        $sql = &$this->pri_sql;
+        $sql = array();
+        $sql[] = $this->extend['UNION'][0];
+        $sql[] = ' UNION ';
+        $sql[] = $this->extend['UNION'][1];
+    }
+
+    protected function buildTransaction()
+    {
+        $sql = &$this->pri_sql;
+        $sql = array();
+        $args = implode('', $this->extend['TRANSACTION']);
+        if (strtoupper($args) == 'BEGIN') {
+            $sql[] = 'BEGIN';
+        }
+        if (strtoupper($args) == 'COMMIT') {
+            $sql[] = 'COMMIT';
+        }
+        if (strtoupper($args) == 'ROLLBACK') {
+            $sql[] = 'ROLLBACK';
+        }
+    }
+
+    protected function buildUnionALL()
+    {
+        $sql = &$this->pri_sql;
+        $sql = array();
+        $sql[] = $this->extend['UNIONALL'][0];
+        $sql[] = ' UNION ALL ';
+        $sql[] = $this->extend['UNIONALL'][1];
     }
 
     protected function buildUpdate()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
+        if (get_class($this) == 'SQL__MySQL') {
+            if (isset($this->option['low_priority'])) {
+                $sql[] = 'LOW_PRIORITY';
+            }
+        }
         $sql[] = $this->buildTable();
         $sql[] = 'SET';
         $updateData = array();
@@ -754,7 +1147,7 @@ class SQL__Global
 
     protected function buildDelete()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
         $sql[] = 'FROM';
         $this->buildTable();
         $this->buildWhere();
@@ -762,7 +1155,17 @@ class SQL__Global
 
     protected function buildInsert()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
+        if (get_class($this) == 'SQL__MySQL') {
+            if (isset($this->option['high_priority'])) {
+                $sql[] = 'HIGH_PRIORITY';
+            } elseif (isset($this->option['low_priority'])) {
+                $sql[] = 'LOW_PRIORITY';
+            }
+            if (isset($this->option['delayed'])) {
+                $sql[] = 'DELAYED';
+            }
+        }
         $sql[] = 'INTO';
         $this->buildTable();
         $keyData = array();
@@ -776,27 +1179,131 @@ class SQL__Global
             $keyData[] = "$key";
             $valueData[] = " '$v' ";
         }
-        $sql[] = '(' . implode($keyData, ',') . ')';
+        $sql[] = '(' . implode(',', $keyData) . ')';
         $sql[] = ' VALUES (';
-        $sql[] = implode($valueData, ',');
+        $sql[] = implode(',', $valueData);
         $sql[] = ')';
     }
 
-    protected function buildDrop()
+    protected function buildTRUNCATE()
     {
-        $sql = &$this->_sql;
+        $sql = &$this->pri_sql;
         $sql[] = 'TABLE';
         $this->buildTable();
     }
 
-    /**
-     * @todo
-     */
+    protected function buildIFEXISTS()
+    {
+        $sql = &$this->pri_sql;
+        if (array_key_exists('IFEXISTS', $this->extend)) {
+            $sql[] = 'IF EXISTS';
+        }
+    }
+
+    protected function buildIFNOTEXISTS()
+    {
+        $sql = &$this->pri_sql;
+        if (array_key_exists('IFNOTEXISTS', $this->extend)) {
+            $sql[] = 'IF NOT EXISTS';
+        }
+    }
+
+    protected function buildDrop()
+    {
+        $sql = &$this->pri_sql;
+
+        if (array_key_exists('INDEX', $this->other)) {
+            $sql[] = 'INDEX';
+            $s = implode(' ,', $this->other['INDEX']);
+            $s = str_replace('%pre%', $this->db->dbpre, $s);
+            $sql[] = $s;
+            if (get_class($this) == 'SQL__MySQL') {
+                $sql[] = 'ON';
+                $this->buildTable();
+            }
+
+            return;
+        }
+        if (array_key_exists('DATABASE', $this->other)) {
+            $sql[] = 'DATABASE';
+            $this->buildIFEXISTS();
+            $sql[] = implode('', $this->other['DATABASE']);
+
+            return;
+        }
+
+        $sql[] = 'TABLE';
+        $this->buildIFEXISTS();
+        $this->buildTable();
+        $s = '';
+        $str = trim(implode('', $this->table));
+        if ($str === '') {
+            $s = implode(' ,', $this->other['TABLE']);
+            $s = str_replace('%pre%', $this->db->dbpre, $s);
+            $str = $s;
+        }
+        $sql[] = $s;
+        $sql[] = ';';
+
+        if (get_class($this) == 'SQL__PostgreSQL') {
+            $s = 'DROP SEQUENCE ' . $str . '_seq;';
+            $s = str_replace('%pre%', $this->db->dbpre, $s);
+            $sql[] = $s;
+        }
+    }
+
     protected function buildCreate()
     {
+        // Do nothing yet
     }
 
     protected function buildIndex()
     {
+        $sql = array();
+        foreach ($this->index as $indexkey => $indexvalue) {
+            $indexname = $indexkey;
+            $indexfield = $indexvalue;
+            $table = $this->table[0];
+            if (stripos($indexname, $table . '_') === false) {
+                $indexname = $table . '_' . $indexname;
+            }
+            $indexname = str_replace('%pre%', $this->db->dbpre, $indexname);
+            if (isset($this->option['uniqueindex']) && $this->option['uniqueindex'] == true) {
+                $sql[] = 'CREATE UNIQUE INDEX ' . $indexname;
+            } else {
+                $sql[] = 'CREATE INDEX ' . $indexname;
+            }
+            $sql[] = 'ON';
+            $sql[] = $this->table[0];
+            $sql[] = '(';
+            foreach ($indexfield as $key => $value) {
+                $sql[] = $value;
+                $sql[] = ',';
+            }
+            array_pop($sql);
+            $sql[] = ')';
+            $sqlAll[] = implode(' ', $sql);
+            $this->pri_sql = $sqlAll;
+            $sqlAll = array();
+        }
     }
+
+    protected function buildDatabase()
+    {
+        $sql = &$this->pri_sql;
+        $sql[] = 'DATABASE';
+        $this->buildIFNOTEXISTS();
+        $sql[] = implode('', $this->other['DATABASE']);
+    }
+
+    protected function buildRandomBefore()
+    {
+        // Do nothing yet
+    }
+
+    protected function buildRandom()
+    {
+        // Do nothing yet
+    }
+
 }

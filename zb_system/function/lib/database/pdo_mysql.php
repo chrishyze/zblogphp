@@ -8,26 +8,44 @@ if (!defined('ZBP_PATH')) {
  */
 class Database__PDO_MySQL implements Database__Interface
 {
+
     public $type = 'mysql';
+
     public $version = '';
+
+    public $error = array();
 
     /**
      * @var string|null 数据库名前缀
      */
     public $dbpre = null;
+
     private $db = null; //数据库连接实例
+
     /**
      * @var string|null 数据库名
      */
     public $dbname = null;
+
     /**
      * @var string|null 数据库引擎
      */
     public $dbengine = null;
+
     /**
      * @var DbSql|null DbSql实例
      */
     public $sql = null;
+
+    /**
+     * @var 字符集
+     */
+    public $charset = 'utf8';
+
+    /**
+     * @var 字符排序
+     */
+    public $collate = null;
 
     /**
      * 构造函数，实例化$sql参数.
@@ -79,13 +97,17 @@ class Database__PDO_MySQL implements Database__Interface
             $this->dbengine = $array[7];
 
             $myver = $this->db->getAttribute(PDO::ATTR_SERVER_VERSION);
-            $this->version = substr($myver, 0, strpos($myver, "-"));
+            $this->version = SplitAndGet($myver, '-', 0);
             if (version_compare($this->version, '5.5.3') >= 0) {
                 $u = "utf8mb4";
+                $c = 'utf8mb4_general_ci';
             } else {
                 $u = "utf8";
+                $c = 'utf8_general_ci';
             }
-            $db_link->query("SET NAMES '" . $u . "'");
+            $db_link->query("SET NAMES {$u} COLLATE {$c}");
+            $this->charset = $u;
+            $this->collate = $c;
 
             return true;
         } catch (PDOException $e) {
@@ -108,31 +130,26 @@ class Database__PDO_MySQL implements Database__Interface
         $this->dbname = $dbmysql_name;
 
         $myver = $this->db->getAttribute(PDO::ATTR_SERVER_VERSION);
-        $myver = substr($myver, 0, strpos($myver, "-"));
-        if (version_compare($myver, '5.5.3') >= 0) {
+        $this->version = SplitAndGet($myver, '-', 0);
+        if (version_compare($this->version, '5.5.3') >= 0) {
             $u = "utf8mb4";
+            $c = 'utf8mb4_general_ci';
         } else {
             $u = "utf8";
+            $c = 'utf8_general_ci';
         }
-        $db_link->query("SET NAMES '" . $u . "'");
+        $this->db->query("SET NAMES '" . $u . "'");
+        $this->charset = $u;
+        $this->collate = $c;
 
-        $s = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='$dbmysql_name'";
-        $a = $this->Query($s);
-        $c = 0;
-        if (is_array($a)) {
-            $b = current($a);
-            if (is_array($b)) {
-                $c = (int) current($b);
-            }
+        $s = "CREATE DATABASE IF NOT EXISTS {$dbmysql_name} DEFAULT CHARACTER SET {$u}";
+        $r = $this->db->exec($this->sql->Filter($s));
+        $this->LogsError();
+        if ($r === false) {
+            return false;
         }
-        if ($c == 0) {
-            $r = $this->db->exec($this->sql->Filter('CREATE DATABASE ' . $dbmysql_name));
-            if ($r === false) {
-                return false;
-            }
 
-            return true;
-        }
+        return true;
     }
 
     /**
@@ -163,6 +180,7 @@ class Database__PDO_MySQL implements Database__Interface
             $s = trim($s);
             if ($s != '') {
                 $this->db->exec($this->sql->Filter($s));
+                $this->LogsError();
             }
         }
     }
@@ -177,6 +195,11 @@ class Database__PDO_MySQL implements Database__Interface
         //$query=str_replace('%pre%', $this->dbpre, $query);
         // 遍历出来
         $results = $this->db->query($this->sql->Filter($query));
+        $e = $this->db->errorCode();
+        if ($e > 0) {
+            trigger_error(implode(' ', $this->db->errorInfo()), E_USER_NOTICE);
+        }
+        $this->LogsError();
         //fetch || fetchAll
         if (is_object($results)) {
             //if(true==true){
@@ -203,7 +226,9 @@ class Database__PDO_MySQL implements Database__Interface
     public function Update($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return $this->db->query($this->sql->Filter($query));
+        $r = $this->db->query($this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -214,7 +239,9 @@ class Database__PDO_MySQL implements Database__Interface
     public function Delete($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return $this->db->query($this->sql->Filter($query));
+        $r = $this->db->query($this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -226,7 +253,7 @@ class Database__PDO_MySQL implements Database__Interface
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
         $this->db->exec($this->sql->Filter($query));
-
+        $this->LogsError();
         return $this->db->lastInsertId();
     }
 
@@ -234,9 +261,9 @@ class Database__PDO_MySQL implements Database__Interface
      * @param $table
      * @param $datainfo
      */
-    public function CreateTable($table, $datainfo, $engine = null)
+    public function CreateTable($table, $datainfo, $engine = null, $charset = null, $collate = null)
     {
-        $this->QueryMulit($this->sql->CreateTable($table, $datainfo));
+        $this->QueryMulit($this->sql->CreateTable($table, $datainfo, $engine, $charset, $collate));
     }
 
     /**
@@ -271,4 +298,13 @@ class Database__PDO_MySQL implements Database__Interface
             return false;
         }
     }
+
+    private function LogsError()
+    {
+        $e = $this->db->errorCode();
+        if ($e > 0) {
+            $this->error[] = array($e, $this->db->errorInfo());
+        }
+    }
+
 }

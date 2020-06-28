@@ -8,22 +8,39 @@ if (!defined('ZBP_PATH')) {
  */
 class Database__SQLite3 implements Database__Interface
 {
+
     public $type = 'sqlite';
+
     public $version = '3';
+
+    public $error = array();
 
     /**
      * @var string|null 数据库名前缀
      */
     public $dbpre = null;
+
     private $db = null; //数据库连接实例
+
     /**
      * @var string|null 数据库名
      */
     public $dbname = null;
+
     /**
      * @var DbSql|null
      */
     public $sql = null;
+
+    /**
+     * @var 字符集
+     */
+    public $charset = 'utf8';
+
+    /**
+     * @var 字符排序
+     */
+    public $collate = null;
 
     /**
      * 构造函数，实例化$sql参数.
@@ -53,6 +70,7 @@ class Database__SQLite3 implements Database__Interface
         if ($this->db = new SQLite3($array[0])) {
             $this->dbpre = $array[1];
             $this->dbname = $array[0];
+            $this->version = substr(GetValueInArray(SQLite3::version(), 'versionString'), 1);
 
             return true;
         } else {
@@ -86,6 +104,7 @@ class Database__SQLite3 implements Database__Interface
             $s = trim($s);
             if ($s != '') {
                 $this->db->query($this->sql->Filter($s));
+                $this->LogsError();
             }
         }
     }
@@ -99,11 +118,16 @@ class Database__SQLite3 implements Database__Interface
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
         // 遍历出来
-        $results = $this->db->query($this->sql->Filter($query));
-        $data = array();
-        if (!($results instanceof Sqlite3Result)) {
-            return $data;
+        $results = @$this->db->query($this->sql->Filter($query));
+        $e = $this->db->lastErrorCode();
+        if ($e != 0) {
+            trigger_error($e . $this->db->lastErrorMsg(), E_USER_NOTICE);
         }
+        $this->LogsError();
+        if (!($results instanceof Sqlite3Result)) {
+            return array($results);
+        }
+        $data = array();
         if ($results->numColumns() > 0) {
             while ($row = $results->fetchArray()) {
                 $data[] = $row;
@@ -111,7 +135,6 @@ class Database__SQLite3 implements Database__Interface
         } else {
             $data[] = $results->numColumns();
         }
-
         return $data;
     }
 
@@ -123,7 +146,9 @@ class Database__SQLite3 implements Database__Interface
     public function Update($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return $this->db->query($this->sql->Filter($query));
+        $r = $this->db->query($this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -134,7 +159,9 @@ class Database__SQLite3 implements Database__Interface
     public function Delete($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return $this->db->query($this->sql->Filter($query));
+        $r = $this->db->query($this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -146,7 +173,7 @@ class Database__SQLite3 implements Database__Interface
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
         $this->db->query($this->sql->Filter($query));
-
+        $this->LogsError();
         return $this->db->lastInsertRowID();
     }
 
@@ -154,7 +181,7 @@ class Database__SQLite3 implements Database__Interface
      * @param $table
      * @param $datainfo
      */
-    public function CreateTable($table, $datainfo)
+    public function CreateTable($table, $datainfo, $engine = null, $charset = null, $collate = null)
     {
         $this->QueryMulit($this->sql->CreateTable($table, $datainfo));
     }
@@ -189,4 +216,13 @@ class Database__SQLite3 implements Database__Interface
             return false;
         }
     }
+
+    private function LogsError()
+    {
+        $e = $this->db->lastErrorCode();
+        if ($e > 0) {
+            $this->error[] = array($e, $this->db->lastErrorMsg());
+        }
+    }
+
 }

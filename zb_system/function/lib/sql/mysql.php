@@ -5,6 +5,7 @@ if (!defined('ZBP_PATH')) {
 }
 class SQL__MySQL extends SQL__Global
 {
+
     /**
      * @override
      */
@@ -31,94 +32,118 @@ class SQL__MySQL extends SQL__Global
     }
 
     /**
-     * @todo
      * @override
      */
     public function exist($table, $dbname = '')
     {
-        $this->_sql = array("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='$dbname' AND TABLE_NAME='$table'");
+        $table = str_replace('%pre%', $this->db->dbpre, $table);
+        $this->pri_sql = array("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='$dbname' AND TABLE_NAME='$table'");
 
         return $this;
     }
 
     /**
-     * @todo
+     *
      * @override
      */
     protected function buildCreate()
     {
+        global $zbp;
 
-        //parent::buildCreate();
         if (!empty($this->index) && empty($this->data)) {
             $this->buildIndex();
-
+            return;
+        } elseif (isset($this->other) && empty($this->data)) {
+            $this->buildDatabase();
             return;
         }
+
+        $zbp->ConvertTableAndDatainfo();
 
         $sqlAll = array();
         foreach ($this->table as $tableIndex => $table) {
             $sql = array();
-            $sql[] = 'CREATE TABLE IF NOT EXISTS ' . $table;
+            if (isset($this->option['temporary'])) {
+                $sql[] = 'CREATE TEMPORARY TABLE IF NOT EXISTS ' . $table;
+            } else {
+                $sql[] = 'CREATE TABLE IF NOT EXISTS ' . $table;
+            }
             $sql[] = ' (';
             $engine = $this->option['engine'];
             $idname = GetValueInArrayByCurrent($this->data, 0);
 
             $i = 0;
             foreach ($this->data as $key => $value) {
+                $comment = '';
+                if (isset($value[4])) {
+                    $value[4] = str_replace('\'', '', $value[4]);
+                    $comment = " COMMENT '{$value[4]}'";
+                }
                 if ($value[1] == 'integer') {
                     if ($i == 0) {
-                        $sql[] = $value[0] . ' int(11) NOT NULL AUTO_INCREMENT' . ',';
+                        $sql[] = $value[0] . ' int(11) NOT NULL AUTO_INCREMENT' . "{$comment},";
                     } else {
                         if ($value[2] == '') {
-                            $sql[] = $value[0] . ' int(11) NOT NULL DEFAULT \'' . $value[3] . '\'' . ',';
+                            $sql[] = $value[0] . ' int(11) NOT NULL DEFAULT \'' . $value[3] . '\'' . "{$comment},";
                         } elseif ($value[2] == 'tinyint') {
-                            $sql[] = $value[0] . ' tinyint(4) NOT NULL DEFAULT \'' . $value[3] . '\'' . ',';
+                            $sql[] = $value[0] . ' tinyint(4) NOT NULL DEFAULT \'' . $value[3] . '\'' . "{$comment},";
                         } elseif ($value[2] == 'smallint') {
-                            $sql[] = $value[0] . ' smallint(6) NOT NULL DEFAULT \'' . $value[3] . '\'' . ',';
+                            $sql[] = $value[0] . ' smallint(6) NOT NULL DEFAULT \'' . $value[3] . '\'' . "{$comment},";
                         } elseif ($value[2] == 'mediumint') {
-                            $sql[] = $value[0] . ' mediumint(9) NOT NULL DEFAULT \'' . $value[3] . '\'' . ',';
+                            $sql[] = $value[0] . ' mediumint(9) NOT NULL DEFAULT \'' . $value[3] . '\'' . "{$comment},";
                         } elseif ($value[2] == 'int') {
-                            $sql[] = $value[0] . ' int(11) NOT NULL DEFAULT \'' . $value[3] . '\'' . ',';
+                            $sql[] = $value[0] . ' int(11) NOT NULL DEFAULT \'' . $value[3] . '\'' . "{$comment},";
                         } elseif ($value[2] == 'bigint') {
-                            $sql[] = $value[0] . ' bigint(20) NOT NULL DEFAULT \'' . $value[3] . '\'' . ',';
+                            $sql[] = $value[0] . ' bigint(20) NOT NULL DEFAULT \'' . $value[3] . '\'' . "{$comment},";
                         }
                     }
                 }
                 if ($value[1] == 'boolean') {
-                    $sql[] = $value[0] . ' tinyint(1) NOT NULL DEFAULT \'' . (int) $value[3] . '\'' . ',';
+                    $sql[] = $value[0] . ' tinyint(1) NOT NULL DEFAULT \'' . (int) $value[3] . '\'' . "{$comment},";
+                }
+                if ($value[1] == 'char') {
+                    $sql[] = $value[0] . ' char(' . (int) $value[2] . ') NOT NULL DEFAULT \'' . $value[3] . '\'' . "{$comment},";
                 }
                 if ($value[1] == 'string') {
                     if ($value[2] != '') {
                         if (strpos($value[2], 'char') !== false) {
-                            $sql[] = $value[0] . ' char(' . str_replace('char', '', $value[2]) . ') NOT NULL DEFAULT \'' . $value[3] . '\'' . ',';
+                            $charnumber = (int) str_replace(array('char', '(', ')'), '', $value[2]);
+                            $charnumber = ($charnumber == 0) ? 250 : $charnumber;
+                            $sql[] = $value[0] . ' char(' . $charnumber . ') NOT NULL DEFAULT \'' . $value[3] . '\'' . "{$comment},";
                         } elseif (is_int($value[2])) {
-                            $sql[] = $value[0] . ' varchar(' . $value[2] . ') NOT NULL DEFAULT \'' . $value[3] . '\'' . ',';
+                            $sql[] = $value[0] . ' varchar(' . $value[2] . ') NOT NULL DEFAULT \'' . $value[3] . '\'' . "{$comment},";
                         } elseif ($value[2] == 'tinytext') {
-                            $sql[] = $value[0] . ' tinytext NOT NULL ' . ',';
+                            $sql[] = $value[0] . ' tinytext NOT NULL ' . "{$comment},";
                         } elseif ($value[2] == 'text') {
-                            $sql[] = $value[0] . ' text NOT NULL ' . ',';
+                            $sql[] = $value[0] . ' text NOT NULL ' . "{$comment},";
                         } elseif ($value[2] == 'mediumtext') {
-                            $sql[] = $value[0] . ' mediumtext NOT NULL ' . ',';
+                            $sql[] = $value[0] . ' mediumtext NOT NULL ' . "{$comment},";
                         } elseif ($value[2] == 'longtext') {
-                            $sql[] = $value[0] . ' longtext NOT NULL ' . ',';
+                            $sql[] = $value[0] . ' longtext NOT NULL ' . "{$comment},";
                         }
                     } else {
-                        $sql[] = $value[0] . ' longtext NOT NULL ' . ',';
+                        $sql[] = $value[0] . ' longtext NOT NULL ' . "{$comment},";
                     }
                 }
                 if ($value[1] == 'double' || $value[1] == 'float') {
-                    $sql[] = $value[0] . " $value[1] NOT NULL DEFAULT 0" . ',';
+                    $sql[] = $value[0] . " $value[1] NOT NULL DEFAULT 0" . "{$comment},";
                 }
                 if ($value[1] == 'decimal') {
-                    $d1 = $value[2][0];
-                    $d2 = $value[2][1];
-                    $sql[] = $value[0] . " $value[1]($d1,$d2) NOT NULL DEFAULT 0" . ',';
+                    if (is_array($value[2])) {
+                        $d1 = $value[2][0];
+                        $d2 = $value[2][1];
+                    } else {
+                        $d = str_replace(array('(', ')'), '', $value[2]);
+                        $d1 = SplitAndGet($d, ',', 0);
+                        $d2 = SplitAndGet($d, ',', 1);
+                    }
+                    $sql[] = $value[0] . " $value[1]($d1,$d2) NOT NULL DEFAULT 0" . "{$comment},";
                 }
                 if ($value[1] == 'date' || $value[1] == 'time' || $value[1] == 'datetime') {
-                    $sql[] = $value[0] . " $value[1] NOT NULL,";
+                    $sql[] = $value[0] . " $value[1] NOT NULL" . "{$comment},";
                 }
                 if ($value[1] == 'timestamp') {
-                    $sql[] = $value[0] . " $value[1] NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,";
+                    $sql[] = $value[0] . " $value[1] NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" . "{$comment},";
                 }
                 $i += 1;
             }
@@ -128,66 +153,27 @@ class SQL__MySQL extends SQL__Global
             if (is_array($engine) && count($engine) > 0) {
                 $myengtype = $engine[1];
             }
-
             if (!$myengtype) {
                 $myengtype = $GLOBALS['zbp']->option['ZC_MYSQL_ENGINE'];
             }
 
-            $sql[] = ') ENGINE=' . $myengtype . ' DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;';
-            $sqlAll[] = implode($sql, ' ');
-        }
-        $this->_sql = $sqlAll;
-    }
+            $charset = $GLOBALS['zbp']->option['ZC_MYSQL_CHARSET'];
+            $collate = $GLOBALS['zbp']->option['ZC_MYSQL_COLLATE'];
 
-    protected function buildIndex()
-    {
-        $sql = array();
-        //var_dump($this->index);
-        foreach ($this->index as $indexkey => $indexvalue) {
-            $indexname = $indexkey;
-            $indexfield = $indexvalue;
+            if (isset($this->option['charset']) && !empty($this->option['charset'])) {
+                $charset = strtolower($this->option['charset']);
+            }
+            if (isset($this->option['collate']) && !empty($this->option['collate'])) {
+                $collate = strtolower($this->option['collate']);
+            }
+            if ($charset == 'utf8mb4' && stripos($collate, 'utf8mb4_') === false) {
+                $collate = str_ireplace('utf8_', 'utf8mb4_', $collate);
+            }
 
-            $sql[] = 'CREATE INDEX ' . $indexname;
-            $sql[] = '(';
-
-            foreach ($indexfield as $key => $value) {
-                $sql[] = $value;
-                $sql[] = ',';
-            }
-            array_pop($sql);
-            $sql[] = ') ;';
-            $sqlAll[] = implode($sql, ' ');
-            $this->_sql = $sqlAll;
-            $sqlAll = array();
+            $sql[] = ') ENGINE=' . $myengtype . ' DEFAULT CHARSET=' . $charset . ' COLLATE=' . $collate . ' AUTO_INCREMENT=1 ;';
+            $sqlAll[] = implode(' ', $sql);
         }
-    }
-
-    /**
-     * @override
-     */
-    protected function buildBeforeWhere()
-    {
-        if (isset($this->option['useindex'])) {
-            if (is_array($this->option['useindex'])) {
-                $this->_sqlPush('USE INDEX (' . implode($this->option['useindex'], ',') . ') ');
-            } else {
-                $this->_sqlPush('USE INDEX (' . $this->option['useindex'] . ') ');
-            }
-        }
-        if (isset($this->option['forceindex'])) {
-            if (is_array($this->option['forceindex'])) {
-                $this->_sqlPush('FORCE INDEX (' . implode($this->option['forceindex'], ',') . ') ');
-            } else {
-                $this->_sqlPush('FORCE INDEX (' . $this->option['forceindex'] . ') ');
-            }
-        }
-        if (isset($this->option['ignoreindex'])) {
-            if (is_array($this->option['ignoreindex'])) {
-                $this->_sqlPush('IGNORE INDEX (' . implode($this->option['ignoreindex'], ',') . ') ');
-            } else {
-                $this->_sqlPush('IGNORE INDEX (' . $this->option['ignoreindex'] . ') ');
-            }
-        }
+        $this->pri_sql = $sqlAll;
     }
 
     /**
@@ -196,14 +182,43 @@ class SQL__MySQL extends SQL__Global
     protected function buildSelect()
     {
         if (isset($this->option['sql_no_cache'])) {
-            $this->_sqlPush('SQL_NO_CACHE ');
-        }
-        if (isset($this->option['sql_cache'])) {
-            $this->_sqlPush('SQL_CACHE ');
+            $this->sqlPush('SQL_NO_CACHE ');
+        } elseif (isset($this->option['sql_cache'])) {
+            $this->sqlPush('SQL_CACHE ');
         }
         if (isset($this->option['sql_buffer_result'])) {
-            $this->_sqlPush('SQL_BUFFER_RESULT ');
+            $this->sqlPush('SQL_BUFFER_RESULT ');
+        }
+        if (isset($this->option['sql_big_result'])) {
+            $this->sqlPush(' SQL_BIG_RESULT ');
+        }
+        if (isset($this->option['sql_small_result'])) {
+            $this->sqlPush('SQL_SMALL_RESULT ');
         }
         parent::buildSelect();
     }
+
+    protected function buildRandomBefore()
+    {
+        $table = $this->table[0];
+        if (in_array($table, $GLOBALS['table'])) {
+            $key = array_search($table, $GLOBALS['table']);
+            $datainfo = $GLOBALS['datainfo'][$key];
+            $d = reset($datainfo);
+            $id = $d[0];
+            $this->where[] = "{$id} >= (SELECT FLOOR( RAND() * ((SELECT MAX({$id}) FROM `{$table}`)-(SELECT MIN({$id}) FROM `{$table}`)) + (SELECT MIN({$id}) FROM `{$table}`)))";
+        }
+    }
+
+    protected function buildRandom()
+    {
+        $sql = &$this->pri_sql;
+        $table = $this->table[0];
+        if (in_array($table, $GLOBALS['table'])) {
+            $sql[] = ' LIMIT ' . implode('', $this->extend['RANDOM']);
+        } else {
+            $sql[] = 'ORDER BY RAND() LIMIT ' . implode('', $this->extend['RANDOM']);
+        }
+    }
+
 }

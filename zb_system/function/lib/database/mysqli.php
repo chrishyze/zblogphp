@@ -8,26 +8,44 @@ if (!defined('ZBP_PATH')) {
  */
 class Database__MySQLi implements Database__Interface
 {
+
     public $type = 'mysql';
+
     public $version = '';
+
+    public $error = array();
 
     /**
      * @var string|null 数据库名前缀
      */
     public $dbpre = null;
+
     private $db = null; //数据库连接实例
+
     /**
      * @var string|null 数据库名
      */
     public $dbname = null;
+
     /**
      * @var string|null 数据库引擎
      */
     public $dbengine = null;
+
     /**
      * @var DbSql|null DbSql实例
      */
     public $sql = null;
+
+    /**
+     * @var 字符集
+     */
+    public $charset = 'utf8';
+
+    /**
+     * @var 字符排序
+     */
+    public $collate = null;
 
     /**
      * 构造函数，实例化$sql参数.
@@ -76,15 +94,21 @@ class Database__MySQLi implements Database__Interface
         //mysqli_options($db,MYSQLI_READ_DEFAULT_GROUP,"max_allowed_packet=50M");
         if (@mysqli_real_connect($db, $array[0], $array[1], $array[2], $array[3], $array[5])) {
             $myver = mysqli_get_server_info($db);
-            $this->version = substr($myver, 0, strpos($myver, "-"));
+            $this->version = SplitAndGet($myver, '-', 0);
             if (version_compare($this->version, '5.5.3') >= 0) {
                 $u = "utf8mb4";
+                $c = 'utf8mb4_general_ci';
             } else {
                 $u = "utf8";
+                $c = 'utf8_general_ci';
             }
             if (mysqli_set_charset($db, $u) == false) {
                 mysqli_set_charset($db, "utf8");
+            } else {
+                mysqli_query($db, "SET NAMES {$u} COLLATE {$c}");
             }
+            $this->charset = $u;
+            $this->collate = $c;
 
             $this->db = $db;
             $this->dbname = $array[3];
@@ -113,35 +137,32 @@ class Database__MySQLi implements Database__Interface
         $db = mysqli_connect($dbmysql_server, $dbmysql_username, $dbmysql_password, null, $dbmysql_port);
 
         $myver = mysqli_get_server_info($db);
-        $myver = substr($myver, 0, strpos($myver, "-"));
-        if (version_compare($myver, '5.5.3') >= 0) {
+        $this->version = SplitAndGet($myver, '-', 0);
+        if (version_compare($this->version, '5.5.3') >= 0) {
             $u = "utf8mb4";
+            $c = 'utf8mb4_general_ci';
         } else {
             $u = "utf8";
+            $c = 'utf8_general_ci';
         }
         if (mysqli_set_charset($db, $u) == false) {
-            mysqli_set_charset($db, "utf8");
+            $u = "utf8";
+            mysql_set_charset($u, $db);
         }
+        $this->charset = $u;
+        $this->collate = $c;
 
         $this->db = $db;
         $this->dbname = $dbmysql_name;
-        $s = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME='$dbmysql_name'";
-        $a = $this->Query($s);
-        $c = 0;
-        if (is_array($a)) {
-            $b = current($a);
-            if (is_array($b)) {
-                $c = (int) current($b);
-            }
-        }
-        if ($c == 0) {
-            $r = mysqli_query($this->db, $this->sql->Filter('CREATE DATABASE ' . $dbmysql_name));
-            if ($r === false) {
-                return false;
-            }
 
-            return true;
+        $s = "CREATE DATABASE IF NOT EXISTS {$dbmysql_name} DEFAULT CHARACTER SET {$u}";
+        $r = mysqli_query($this->db, $this->sql->Filter($s));
+        $this->LogsError();
+        if ($r === false) {
+            return false;
         }
+
+        return true;
     }
 
     /**
@@ -177,6 +198,7 @@ class Database__MySQLi implements Database__Interface
             $s = trim($s);
             if ($s != '') {
                 mysqli_query($this->db, $this->sql->Filter($s));
+                $this->LogsError();
             }
         }
     }
@@ -190,10 +212,11 @@ class Database__MySQLi implements Database__Interface
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
         $results = mysqli_query($this->db, $this->sql->Filter($query));
-        if (mysqli_errno($this->db)) {
-            trigger_error(mysqli_error($this->db), E_USER_NOTICE);
+        $e = mysqli_errno($this->db);
+        if ($e != 0) {
+            trigger_error($e . mysqli_error($this->db), E_USER_NOTICE);
         }
-
+        $this->LogsError();
         $data = array();
         if (is_object($results)) {
             while ($row = mysqli_fetch_assoc($results)) {
@@ -227,7 +250,9 @@ class Database__MySQLi implements Database__Interface
     public function Update($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return mysqli_query($this->db, $this->sql->Filter($query));
+        $r = mysqli_query($this->db, $this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -238,7 +263,9 @@ class Database__MySQLi implements Database__Interface
     public function Delete($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return mysqli_query($this->db, $this->sql->Filter($query));
+        $r = mysqli_query($this->db, $this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -250,7 +277,7 @@ class Database__MySQLi implements Database__Interface
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
         mysqli_query($this->db, $this->sql->Filter($query));
-
+        $this->LogsError();
         return mysqli_insert_id($this->db);
     }
 
@@ -258,9 +285,9 @@ class Database__MySQLi implements Database__Interface
      * @param $table
      * @param $datainfo
      */
-    public function CreateTable($table, $datainfo, $engine = null)
+    public function CreateTable($table, $datainfo, $engine = null, $charset = null, $collate = null)
     {
-        $this->QueryMulit($this->sql->CreateTable($table, $datainfo));
+        $this->QueryMulit($this->sql->CreateTable($table, $datainfo, $engine, $charset, $collate));
     }
 
     /**
@@ -279,6 +306,7 @@ class Database__MySQLi implements Database__Interface
     public function ExistTable($table)
     {
         $a = $this->Query($this->sql->ExistTable($table, $this->dbname));
+        $this->LogsError();
         if (!is_array($a)) {
             return false;
         }
@@ -295,4 +323,13 @@ class Database__MySQLi implements Database__Interface
             return false;
         }
     }
+
+    private function LogsError()
+    {
+        $e = mysqli_errno($this->db);
+        if ($e != 0) {
+            $this->error[] = array($e, mysqli_error($this->db));
+        }
+    }
+
 }

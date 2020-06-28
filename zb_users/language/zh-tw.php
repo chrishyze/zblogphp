@@ -19,7 +19,7 @@ return array(
     'font_size'             => '',
     'windows_character_set' => 'BIG5',
 
-//Front-End & Back-End
+    //Front-End & Back-End
     'msg' => array(
         'id'                                => 'ID',
         'name'                              => '名稱',
@@ -76,7 +76,8 @@ return array(
         'return_to_site'                    => '造訪網站',
         'check_comment'                     => '待審中',
         'dashboard'                         => '控制台首頁',
-        'settings'                          => '網站設定',
+        'settings'                          => '設定',
+        'web_settings'                      => '網站設定',
         'official_website'                  => '官方網站',
         'parend_id'                         => '父層ID',
         'select_all'                        => '全選',
@@ -165,10 +166,16 @@ return array(
         'sidebar3'                          => '側邊欄 3',
         'sidebar4'                          => '側邊欄 4',
         'sidebar5'                          => '側邊欄 5',
+        'sidebar6'                          => '側邊欄 6',
+        'sidebar7'                          => '側邊欄 7',
+        'sidebar8'                          => '側邊欄 8',
+        'sidebar9'                          => '側邊欄 9',
         'display_subcategorys'              => '列出分類下所有子分類的文章',
         'drag_module_to_sidebar'            => '請拖曳需要的模組到右側區域指定側邊欄。側邊欄中的模組可排序，也可拖曳至左側區域移除。',
         'sidebar_module_count'              => '內建有%s個模組',
-        'xmlrpc_address'                    => 'XML-RPC協議位址',
+        'protocol_address'                  => '協議位址',
+        'xmlrpc_address'                    => 'XML-RPC位址',
+        'api_address'                       => 'API位址',
         'system_environment'                => '系統環境',
         'view_rights'                       => '檢視授權',
         'member_level'                      => '帳號角色',
@@ -222,6 +229,7 @@ return array(
         'top_category'                      => '分類',
         'jump_comment'                      => '檢視迴響ID=',
         'year_suffix'                       => '年',
+        'month_suffix'                      => '月',
         'week_suffix'                       => '周',
         'time'                              => '時間',
         'hour'                              => '小時',
@@ -250,10 +258,23 @@ return array(
         'current_template'                  => '當前模板',
         'additional_security'               => '安全增強',
         'using_cdn_guest_type'              => '客戶IP獲取来源',
+        'first_button'                      => '‹‹',
+        'prev_button'                       => '‹',
+        'next_button'                       => '›',
+        'last_button'                       => '››',
+        'numeral_button'                    => '%num%',
+        'verify_succeed'                    => '校验成功,请提交!',
+        'verify_fail'                       => '校验失败',
+        'verifying'                         => '校验中',
+        'show_warning_error'                => '允許Warning級別報錯',
+        'backend_setting'                   => '後台設置',
+        'get_text_intro'                    => '文章編輯時獲取純文本摘要',
+        'update_db'                         => '請點擊該鏈接升級數據庫結構。',
+        'enable_post_batch_delete'          => '啟用文章批量刪除',
         ''                                  => '',
     ),
 
-//Action
+    //Action
     'actions' => array(
         'login'       => '登入',
         'logout'      => '登出',
@@ -320,14 +341,16 @@ return array(
         'NoValidCode' => '驗證碼',
     ),
 
-//Article Level
+    //Article Level
     'post_status_name' => array(
         '0' => '公開',
         '1' => '草稿',
         '2' => '待審',
+        '4' => '私有',
+        '8' => '加鎖',
     ),
 
-//User Level
+    //User Level
     'user_level_name' => array(
         '1' => '管理員',
         '2' => '網站編輯',
@@ -343,7 +366,7 @@ return array(
         '2' => '禁止',
     ),
 
-//January, February...
+    //January, February...
     'month' => array(
         '1'  => '一月',
         '2'  => '二月',
@@ -359,7 +382,7 @@ return array(
         '12' => '十二月',
     ),
 
-//Jan., Feb. ...
+    //Jan., Feb. ...
     'month_abbr' => array(
         '1'  => '01月',
         '2'  => '02月',
@@ -375,7 +398,7 @@ return array(
         '12' => '12月',
     ),
 
-//Sunday, Monday..
+    //Sunday, Monday..
     'week' => array(
         '7' => '星期日',
         '1' => '星期一',
@@ -386,7 +409,7 @@ return array(
         '6' => '星期六',
     ),
 
-//Sun., Mon. ...
+    //Sun., Mon. ...
     'week_abbr' => array(
         '7' => '日',
         '1' => '一',
@@ -407,7 +430,7 @@ return array(
         '6' => '周六',
     ),
 
-//Custom Error Information
+    //Custom Error Information
     'error' => array(
         '0'  => '未知錯誤',
         '1'  => '未知命令',
@@ -510,7 +533,7 @@ return array(
         'more_help' => 'https://www.zblogcn.com/help/?id={%id%}&message={%message%}',
     ),
 
-// Possible causes of the error
+    // Possible causes of the error
     'error_reasons' => array(
         // -1 for default
         'default' => '',

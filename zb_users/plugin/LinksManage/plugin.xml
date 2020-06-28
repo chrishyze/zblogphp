@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <plugin version="php">
 <id>LinksManage</id>
-<name>链接管理中心</name>
+<name>链接模块管理</name>
 <url>https://app.zblogcn.com/?id=1873</url>
 <note>表单化管理导航、友情链接等</note>
 <description>表单化管理导航、友情链接等</description>
@@ -19,11 +19,11 @@
   <url></url>
 </source>
 <adapted>151626</adapted>
-<version>1.1</version>
+<version>1.2.2</version>
 <pubdate>2018-10-29</pubdate>
-<modified>2019-04-13</modified>
+<modified>2020-06-16</modified>
 <price>0</price>
-<phpver>5.4</phpver>
+<phpver>5.2</phpver>
 <advanced>
   <dependency></dependency>
   <rewritefunctions></rewritefunctions>
@@ -36,5 +36,9 @@
   <sidebar3></sidebar3>
   <sidebar4></sidebar4>
   <sidebar5></sidebar5>
+  <sidebar6></sidebar6>
+  <sidebar7></sidebar7>
+  <sidebar8></sidebar8>
+  <sidebar9></sidebar9>
 </sidebars>
 </plugin>

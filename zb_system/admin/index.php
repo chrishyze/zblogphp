@@ -1,28 +1,23 @@
 <?php
+
 /**
  * Z-Blog with PHP.
  *
- * @author
- * @copyright (C) RainbowSoft Studio
- *
+ * @author  Z-BlogPHP Team
  * @version 2.0 2013-07-05
  */
 require '../function/c_system_base.php';
 require '../function/c_system_admin.php';
 
-$zbp->CheckGzip();
 $zbp->Load();
 
-$action = GetVars('act', 'GET');
+$zbp->action = GetVars('act', 'GET');
 
-$admin_action_add = null;
 $admin_function = null;
 
-if (($action == '') || ($action == null)) {
-    $action = 'admin';
-}
+$zbp->action = ($zbp->action == '') ? 'admin' : $zbp->action;
 
-if (!$zbp->CheckRights($action)) {
+if (!$zbp->CheckRights($zbp->action)) {
     $zbp->ShowError(6, __FILE__, __LINE__);
     die();
 }
@@ -31,7 +26,7 @@ foreach ($GLOBALS['hooks']['Filter_Plugin_Admin_Begin'] as $fpname => &$fpsignal
     $fpname();
 }
 
-switch ($action) {
+switch ($zbp->action) {
     case 'ArticleMng':
         if (is_null($admin_function)) {
             $admin_function = 'Admin_ArticleMng';
@@ -104,11 +99,14 @@ switch ($action) {
             $blogtitle = $lang['msg']['dashboard'];
         }
         break;
-    case $admin_action_add:
-        break;
     default:
-        $zbp->ShowError(6, __FILE__, __LINE__);
-        die();
+        foreach ($GLOBALS['hooks']['Filter_Plugin_Admin_Other_Action'] as $fpname => &$fpsignal) {
+            $fpsignal = $fpname($zbp->action, $admin_function);
+            if ($fpsignal == PLUGIN_EXITSIGNAL_RETURN || $fpsignal == PLUGIN_EXITSIGNAL_BREAK) {
+                break;
+            }
+        }
+        unset($fpsignal);
         break;
 }
 
@@ -117,9 +115,9 @@ require ZBP_PATH . 'zb_system/admin/admin_top.php';
 
 ?>
 <div id="divMain">
-<?php
-$admin_function();
-?>
+    <?php
+    $admin_function();
+    ?>
 </div>
 <?php
 require ZBP_PATH . 'zb_system/admin/admin_footer.php';

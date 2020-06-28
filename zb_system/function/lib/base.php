@@ -11,14 +11,17 @@ if (!defined('ZBP_PATH')) {
  */
 class Base
 {
+
     /**
      * @var string 数据表
      */
-    protected $table = '';
+    protected $table = null;
+
     /**
      * @var array 表结构信息
      */
-    protected $datainfo = array();
+    protected $datainfo = null;
+
     /**
      * @var array 数据
      */
@@ -28,10 +31,12 @@ class Base
      * @var Metas|null 扩展元数据
      */
     public $Metas = null;
+
     /**
      * @var Database__Interface db
      */
     protected $db = null;
+
     /**
      * @var string 类名
      */
@@ -54,7 +59,6 @@ class Base
 
         $this->table = &$table;
         $this->datainfo = &$datainfo;
-
         if (function_exists('get_called_class')) {
             $this->classname = get_called_class();
         } elseif (is_string($classname)) {
@@ -96,7 +100,7 @@ class Base
      */
     public function __isset($name)
     {
-        return isset($this->data[$name]);
+        return array_key_exists($name, $this->data);
     }
 
     /**
@@ -108,13 +112,57 @@ class Base
     }
 
     /**
-     * 获取数据库数据.
+     * 获取数据库数据(不设$key就返回整个data数组).
      *
      * @return array
      */
-    public function GetData()
+    public function GetData($key = null)
     {
-        return $this->data;
+        if (null == $key) {
+            return $this->data;
+        } else {
+            return $this->data[$key];
+        }
+    }
+
+    /**
+     * 获取数据库数据.
+     *
+     * @param key 如果是array，就忽略$value
+     *
+     * @return array
+     */
+    public function SetData($key, $value = null)
+    {
+        if (is_array($key)) {
+            foreach ($key as $key2 => $value2) {
+                $this->data[$key2] = $value2;
+            }
+
+            return true;
+        }
+        if ($value !== null) {
+            $this->data[$key] = $value;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 删除data的键，谨用.
+     *
+     * @return boolean
+     */
+    public function UnsetData($key)
+    {
+        if (array_key_exists($key, $this->data)) {
+            unset($this->data[$key]);
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -172,21 +220,22 @@ class Base
     {
         global $bloghost;
         foreach ($this->datainfo as $key => $value) {
-            if (!isset($array[$value[0]])) {
+            if (!array_key_exists($value[0], $array)) {
                 continue;
             }
 
-            if ($value[1] == 'boolean') {
-                $this->data[$key] = (bool) $array[$value[0]];
-            } elseif ($value[1] == 'string') {
-                if ($key == 'Meta') {
-                    $this->data[$key] = $array[$value[0]];
-                    $this->Metas->Unserialize($this->data['Meta']);
+            $v = $array[$value[0]];
+            if ($value[1] == 'string' || $value[1] == 'char') {
+                if ($key != 'Meta') {
+                    $this->data[$key] = str_replace('{#ZC_BLOG_HOST#}', $bloghost, $v);
                 } else {
-                    $this->data[$key] = str_replace('{#ZC_BLOG_HOST#}', $bloghost, $array[$value[0]]);
+                    $this->data[$key] = $v;
+                    $this->Metas->Unserialize($this->data['Meta']);
                 }
+            } elseif ($value[1] != 'boolean') {
+                $this->data[$key] = $v;
             } else {
-                $this->data[$key] = $array[$value[0]];
+                $this->data[$key] = (bool) $v;
             }
         }
         //foreach ($GLOBALS['hooks']['Filter_Plugin_Base_Data_Load'] as $fpname => &$fpsignal) {
@@ -206,20 +255,9 @@ class Base
      */
     public function LoadInfoByField($field, $field_value)
     {
-        global $table, $datainfo;
-        $field_table = array_flip($table);
-        $field_table = $field_table[$this->table];
-        $field_name = $datainfo[$field_table][$field][0];
-        $sql = $this->db->sql->Select($this->table, array('*'), array(array('=', $field_name, $field_value)), null, 1, null);
-        $array = $this->db->Query($sql);
-
-        if (count($array) > 0) {
-            $this->LoadInfoByAssoc($array[0]);
-
-            return true;
-        } else {
-            return false;
-        }
+        return $this->LoadInfoByFields(
+            array($field => $field_value)
+        );
     }
 
     /**
@@ -251,7 +289,7 @@ class Base
     }
 
     /**
-     * 从数组中加载数据.
+     * 从数组(整数索引key)中加载数据.
      *
      * @param $array
      *
@@ -260,27 +298,65 @@ class Base
     public function LoadInfoByArray($array)
     {
         global $bloghost;
+
         $i = 0;
         foreach ($this->datainfo as $key => $value) {
             if (count($array) == $i) {
                 continue;
             }
 
-            if ($value[1] == 'boolean') {
-                $this->data[$key] = (bool) $array[$i];
-            } elseif ($value[1] == 'string') {
-                if ($key == 'Meta') {
-                    $this->data[$key] = $array[$i];
-                    if (isset($this->data['Meta'])) {
-                        $this->Metas->Unserialize($this->data['Meta']);
-                    }
+            $v = $array[$i];
+            if ($value[1] == 'string' || $value[1] == 'char') {
+                if ($key != 'Meta') {
+                    $this->data[$key] = str_replace('{#ZC_BLOG_HOST#}', $bloghost, $v);
                 } else {
-                    $this->data[$key] = str_replace('{#ZC_BLOG_HOST#}', $bloghost, $array[$i]);
+                    $this->data[$key] = $v;
+                    $this->Metas->Unserialize($this->data['Meta']);
                 }
+            } elseif ($value[1] != 'boolean') {
+                $this->data[$key] = $v;
             } else {
-                $this->data[$key] = $array[$i];
+                $this->data[$key] = (bool) $v;
             }
             $i += 1;
+        }
+        //foreach ($GLOBALS['hooks']['Filter_Plugin_Base_Data_Load'] as $fpname => &$fpsignal) {
+        //    $fpname($this, $this->data);
+        //}
+
+        return true;
+    }
+
+    /**
+     * 从Data数组中加载数据.
+     *
+     * @param $array
+     *
+     * @return bool
+     */
+    public function LoadInfoByDataArray($array)
+    {
+        global $bloghost;
+
+        $array = array_change_key_case($array, CASE_LOWER);
+        foreach ($this->datainfo as $key => $value) {
+            if (!array_key_exists(strtolower($key), $array)) {
+                continue;
+            }
+
+            $v = $array[strtolower($key)];
+            if ($value[1] == 'string' || $value[1] == 'char') {
+                if ($key != 'Meta') {
+                    $this->data[$key] = str_replace('{#ZC_BLOG_HOST#}', $bloghost, $v);
+                } else {
+                    $this->data[$key] = $v;
+                    $this->Metas->Unserialize($this->data['Meta']);
+                }
+            } elseif ($value[1] != 'boolean') {
+                $this->data[$key] = $v;
+            } else {
+                $this->data[$key] = (bool) $v;
+            }
         }
         //foreach ($GLOBALS['hooks']['Filter_Plugin_Base_Data_Load'] as $fpname => &$fpsignal) {
         //    $fpname($this, $this->data);
@@ -297,13 +373,13 @@ class Base
     public function Save()
     {
         global $bloghost;
-        if (isset($this->data['Meta'])) {
+        if (array_key_exists('Meta', $this->data)) {
             $this->data['Meta'] = $this->Metas->Serialize();
         }
 
         $keys = array();
         foreach ($this->datainfo as $key => $value) {
-            if (!is_array($value) || count($value) != 4) {
+            if (!is_array($value) || count($value) < 4) {
                 continue;
             }
 
@@ -312,7 +388,7 @@ class Base
         $keyvalue = array_fill_keys($keys, '');
 
         foreach ($this->datainfo as $key => $value) {
-            if (!is_array($value) || count($value) != 4) {
+            if (!is_array($value) || count($value) < 4) {
                 continue;
             }
 
@@ -324,7 +400,7 @@ class Base
                 $keyvalue[$value[0]] = (float) $this->data[$key];
             } elseif ($value[1] == 'double') {
                 $keyvalue[$value[0]] = (float) $this->data[$key];
-            } elseif ($value[1] == 'string') {
+            } elseif ($value[1] == 'string' || $value[1] == 'char') {
                 if ($key == 'Meta') {
                     $keyvalue[$value[0]] = $this->data[$key];
                 } else {
@@ -377,4 +453,5 @@ class Base
     {
         return (string) json_encode($this->data);
     }
+
 }

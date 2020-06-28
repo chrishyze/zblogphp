@@ -1,19 +1,19 @@
 <?php
 
-class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
+class ClassSQLGlobalTest extends PHPUnit\Framework\TestCase
 {
     protected $backupGlobalsBlacklist = array('zbp');
     protected static $db = null;
 
-    public function setUp()
+    public function setUp(): void
     {
         /*
          * Use MySQL to test Global
          */
-        self::$db = new SQLMySQL($GLOBALS['zbp']->db);
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
     }
 
-    public function tearDown()
+    public function tearDown(): void
     {
         self::$db->reset();
         self::$db = null;
@@ -28,41 +28,61 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
 
     public function testInsert()
     {
-        self::$db = new SQLMySQL($GLOBALS['zbp']->db);
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
         self::$db->insert('zbp_post')->data(array('log_Title' => 'test'));
         $this->assertEquals('INSERT INTO  zbp_post  (log_Title)  VALUES (  \'test\'  )', self::$db->sql);
     }
 
     public function testDelete()
     {
-        self::$db = new SQLMySQL($GLOBALS['zbp']->db);
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
         self::$db->delete('zbp_post');
         $this->assertEquals('DELETE FROM  zbp_post ', self::$db->sql);
     }
 
     public function testDrop()
     {
-        self::$db = new SQLMySQL($GLOBALS['zbp']->db);
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
         self::$db->drop('zbp_post');
-        $this->assertEquals('DROP TABLE  zbp_post ', self::$db->sql);
+        $this->assertEquals('DROP TABLE  zbp_post   ;', self::$db->sql);
+        self::$db->drop('zbp_post')->ifexists();
+        $this->assertEquals('DROP TABLE IF EXISTS  zbp_post   ;', self::$db->sql);
+    }
+
+    public function testDropIndex()
+    {
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
+        self::$db->drop('zbp_post')->index('zbp_log_VTSC');
+        $this->assertEquals('DROP INDEX zbp_log_VTSC ON  zbp_post ', self::$db->sql);
+    }
+
+    public function testCreateIndex()
+    {
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
+        self::$db->CREATE('zbp_post')->index(array('zbp_post_index_stt'=>array('log_Status','log_Type','log_Tag')));
+        $this->assertEquals('CREATE INDEX zbp_post_index_stt ON zbp_post ( log_Status , log_Type , log_Tag )', self::$db->sql);
     }
 
     public function testCreate()
     {
-        self::$db = new SQLMySQL($GLOBALS['zbp']->db);
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
         self::$db
             ->create('zbp_post')
             ->data(
                 array(
-                'ID' => array('log_ID', 'integer', '', 0),
+                    'ID' => array('log_ID', 'integer', '', 0),
                 )
-            );
-        $this->assertEquals('CREATE TABLE IF NOT EXISTS zbp_post  ( log_ID int(11) NOT NULL AUTO_INCREMENT, PRIMARY KEY (log_ID) ) ENGINE=MyISAM DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;', self::$db->sql);
+            )
+            ->option(array('engine' => 'MyISAM'))
+            ->option(array('charset' => 'utf8'))
+            ->option(array('collate' => 'utf8_general_ci'))
+            ;
+        $this->assertEquals('CREATE TABLE IF NOT EXISTS zbp_post  ( log_ID int(11) NOT NULL AUTO_INCREMENT, PRIMARY KEY (log_ID) ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci AUTO_INCREMENT=1 ;', self::$db->sql);
     }
 
     public function testUpdate()
     {
-        self::$db = new SQLMySQL($GLOBALS['zbp']->db);
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
         self::$db
             ->update('zbp_post')
             ->data(array('log_Title' => 'test'));
@@ -71,27 +91,31 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
 
     public function testCount()
     {
-        self::$db = new SQLMySQL($GLOBALS['zbp']->db);
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
         $this->assertEquals(
-            'SELECT  COUNT(log_id) AS countid  FROM  zbp_post ', self::$db
+            'SELECT  COUNT(log_id) AS countid  FROM  zbp_post ',
+            self::$db
                 ->select("zbp_post")
                 ->count('log_id', 'countid')
                 ->sql
         );
         $this->assertEquals(
-            'SELECT  COUNT(log_id) AS countid  FROM  zbp_post ', self::$db
+            'SELECT  COUNT(log_id) AS countid  FROM  zbp_post ',
+            self::$db
                 ->select("zbp_post")
                 ->count(array('log_id', 'countid'))
                 ->sql
         );
         $this->assertEquals(
-            'SELECT  COUNT(log_id)  FROM  zbp_post ', self::$db
+            'SELECT  COUNT(log_id)  FROM  zbp_post ',
+            self::$db
                 ->select("zbp_post")
                 ->count('log_id')
                 ->sql
         );
         $this->assertEquals(
-            'SELECT  COUNT(log_id),log_authorid  FROM  zbp_post ', self::$db
+            'SELECT  COUNT(log_id), log_authorid  FROM  zbp_post ',
+            self::$db
                 ->select("zbp_post")
                 ->count('log_id')
                 ->column('log_authorid')
@@ -101,7 +125,7 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
 
     public function testWhere()
     {
-        self::$db = new SQLMySQL($GLOBALS['zbp']->db);
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
         $this->assertEquals(
             'SELECT * FROM  zbp_post  WHERE  log_ID = \'1\' ',
             self::$db
@@ -150,10 +174,10 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
                 ->select("zbp_post")
                 ->where(
                     array('array',
-                    array(
-                    array('log_ID', '1'),
-                    array('log_Title', '2'),
-                    ),
+                        array(
+                            array('log_ID', '1'),
+                            array('log_Title', '2'),
+                        ),
                     )
                 )
                 ->sql
@@ -164,10 +188,10 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
                 ->select("zbp_post")
                 ->where(
                     array('not array',
-                    array(
-                    array('log_ID', '1'),
-                    array('log_Title', '2'),
-                    ),
+                        array(
+                            array('log_ID', '1'),
+                            array('log_Title', '2'),
+                        ),
                     )
                 )
                 ->sql
@@ -178,24 +202,24 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
                 ->select("zbp_post")
                 ->where(
                     array('like array',
-                    array(
-                    array('log_ID', '1'),
-                    array('log_Title', '2'),
-                    ),
+                        array(
+                            array('log_ID', '1'),
+                            array('log_Title', '2'),
+                        ),
                     )
                 )
                 ->sql
         );
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  WHERE  ((1 = 1) AND ( log_ID ILIKE \'1\'  OR  log_Title ILIKE \'2\' ) )',
+            'SELECT * FROM  zbp_post  WHERE  ((1 = 1) AND ( log_ID LIKE \'1\'  OR  log_Title LIKE \'2\' ) )',
             self::$db
                 ->select("zbp_post")
                 ->where(
                     array('ilike array',
-                    array(
-                    array('log_ID', '1'),
-                    array('log_Title', '2'),
-                    ),
+                        array(
+                            array('log_ID', '1'),
+                            array('log_Title', '2'),
+                        ),
                     )
                 )
                 ->sql
@@ -235,26 +259,33 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
                 ->where(array('CUSTOM', '1=1'))
                 ->sql
         );
+        $this->assertEquals(
+            'SELECT * FROM  zbp_post  WHERE log_ID >= ANY(select log_id from zbp_post) ',
+            self::$db
+                ->select("zbp_post")
+                ->where(array('ANY', 'log_ID', '>=', 'select log_id from zbp_post'))
+                ->sql
+        );
     }
 
     public function testOrderby()
     {
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  ORDER BY bbb desc, aaa ',
+            'SELECT * FROM  zbp_post  ORDER BY bbb DESC, aaa ',
             self::$db
                 ->select("zbp_post")
                 ->orderBy(array('bbb' => 'desc'), 'aaa')
                 ->sql
         );
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  ORDER BY bbb desc',
+            'SELECT * FROM  zbp_post  ORDER BY bbb DESC',
             self::$db
                 ->select("zbp_post")
                 ->orderBy(array('bbb' => 'desc'))
                 ->sql
         );
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  ORDER BY bbb desc, aaa asc',
+            'SELECT * FROM  zbp_post  ORDER BY bbb DESC, aaa ASC',
             self::$db
                 ->select("zbp_post")
                 ->orderBy(array('bbb' => 'desc', 'aaa' => 'asc'))
@@ -304,10 +335,11 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
     public function testHaving()
     {
         $this->assertEquals(
-            'SELECT * FROM  zbp_post  HAVING   bbb > 0 AND aaa < 0',
+            'SELECT * FROM  zbp_post  HAVING    ( bbb > 0 )  AND  aaa < \'0\' ',
             self::$db
                 ->select("zbp_post")
-                ->having(array('bbb > 0', 'aaa < 0'))
+                ->having(array('bbb > 0'))
+                ->having(array('<','aaa','0'))
                 ->sql
         );
         $this->assertEquals(
@@ -361,12 +393,11 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
                 ->sql
         );
         $this->assertEquals(
-            'SELECT  * AS sum,log_Content AS content,log_AuthorID AS author,log_Title,log_PostTime,log_ID AS ID  FROM  zbp_post ',
+            'SELECT  log_Content AS content, log_AuthorID AS author, log_Title, log_PostTime, log_ID AS ID  FROM  zbp_post ',
             self::$db
                 ->select("zbp_post")
-                ->column(array('*', 'sum'))
-                ->column(array(array('log_Content', 'content'), array('log_AuthorID', 'author')))
-                ->column('log_Title', 'log_PostTime', array('log_ID', 'ID'))
+                ->column(array(array('log_Content'=>'content'), array('log_AuthorID'=>'author')))
+                ->column('log_Title', 'log_PostTime', array('log_ID'=>'ID'))
                 ->sql
         );
     }
@@ -378,6 +409,28 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
             self::$db
                 ->select("zbp_post")
                 ->option(array('test' => 'test'))
+                ->sql
+        );
+    }
+
+    public function testTransaction()
+    {
+        $this->assertEquals(
+            'BEGIN',
+            self::$db
+                ->transaction("begin")
+                ->sql
+        );
+        $this->assertEquals(
+            'COMMIT',
+            self::$db
+                ->transaction("Commit")
+                ->sql
+        );
+        $this->assertEquals(
+            'ROLLBACK',
+            self::$db
+                ->transaction("ROLLBACK")
                 ->sql
         );
     }
@@ -474,4 +527,53 @@ class ClassSQLGlobalTest extends PHPUnit_Framework_TestCase
             )->sql
         );
     }
+
+    public function testUnion()
+    {
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
+        self::$db->unionall(
+                              self::$db->select('zbp_table')->sql,
+                              self::$db->select('zbp_table2')->sql
+                           );
+        $this->assertEquals('SELECT * FROM  zbp_table   UNION ALL  SELECT * FROM  zbp_table2 ', self::$db->sql);
+        self::$db->union(
+                              self::$db->select('zbp_table')->sql,
+                              self::$db->select('zbp_table2')->sql
+                           );
+        $this->assertEquals('SELECT * FROM  zbp_table   UNION  SELECT * FROM  zbp_table2 ', self::$db->sql);
+    }
+
+    public function testGroupbyHaving()
+    {
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
+        self::$db->select("zbp_post")
+                           ->column('log_CateID')
+                           ->column('SUM(log_CommNums)')
+                           ->groupby('log_CateID')
+                           ->having('SUM(log_CommNums) > 10');
+        $this->assertEquals('SELECT  log_CateID, SUM(log_CommNums)  FROM  zbp_post  GROUP BY log_CateID HAVING   SUM(log_CommNums) > 10', self::$db->sql);
+    }    
+
+
+    public function testADDCOLUMN()
+    {
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
+        self::$db->ALTER("zbp_post")
+            ->ADDCOLUMN('log_IsHide tinyint(4) NOT NULL DEFAULT \'0\'')
+            ->ADDCOLUMN('log_CreateTime', 'int(11) NOT NULL DEFAULT \'0\'')
+            ->ADDCOLUMN('log_Note', 'longtext', 'NOT NULL');
+        $this->assertEquals('ALTER TABLE  zbp_post    ADD COLUMN log_IsHide tinyint(4) NOT NULL DEFAULT \'0\' ,ADD COLUMN log_CreateTime int(11) NOT NULL DEFAULT \'0\' ,ADD COLUMN log_Note longtext NOT NULL', self::$db->sql);
+    }
+
+    public function testJoin()
+    {
+        self::$db = new SQL__MySQL($GLOBALS['zbp']->db);
+        self::$db->selectany('log_ID')->
+            from(array('zbp_post'=>'p'))
+            ->leftjoin(array('zbp_postrelation'=>'pr'))
+            ->on('log_ID = pr_PostID')
+            ->where('1 = 1');
+        $this->assertEquals('SELECT  log_ID  FROM zbp_post AS p LEFT JOIN zbp_postrelation AS pr ON log_ID = pr_PostID WHERE 1 = 1', self::$db->sql);
+    }
+
 }

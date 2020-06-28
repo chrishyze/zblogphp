@@ -2,9 +2,7 @@
 /**
  * Z-Blog with PHP.
  *
- * @author
- * @copyright (C) RainbowSoft Studio
- *
+ * @author  Z-BlogPHP Team
  * @version 2.0 2013-06-14
  */
 require '../function/c_system_base.php';
@@ -14,6 +12,7 @@ ob_clean();
 ?>
 var zbp = new ZBP({
     bloghost: "<?php echo $zbp->host; ?>",
+    blogversion: "<?php echo $zbp->version; ?>",
     ajaxurl: "<?php echo $zbp->ajaxurl; ?>",
     cookiepath: "<?php echo $zbp->cookiespath; ?>",
     comment: {
@@ -113,8 +112,6 @@ function ActiveTopMenu(name){
 // 返回：    无
 //*********************************************************
 function bmx2table(){
-    $("table:not(.table_striped)").addClass("table_striped");
-    $("table:not(.table_hover)").addClass("table_hover");
 };
 //*********************************************************
 
@@ -128,6 +125,9 @@ function bmx2table(){
 //*********************************************************
 function ChangeCheckValue(obj){
 
+    if ($(obj).hasClass("imgcheck-disabled")) {
+        return;
+    }
     $(obj).toggleClass('imgcheck-on');
 
     if($(obj).hasClass('imgcheck-on')){
@@ -169,15 +169,25 @@ function notify(s){
 function statistic(s){
     $("#statloading").show();
     $("#updatatime").hide();
-    $.get(s+"&tm="+Math.random(),{},
-        function(data){
+    $.ajax({
+        type: "GET",
+        url: s+"&tm="+Math.random(),
+        data: {},
+        error: function(xhr, exception){
+            if( xhr.status == "500") {
+                 alert('<?php echo $lang['msg']['refresh_cache']; ?>\n\r<?php echo $lang['msg']['operation_failed']; ?>');
+            }
+            $("#statloading").hide();
+            $("#updatatime").show();
+        },
+        success: function(data){
             $("#tbStatistic tr:first ~ tr").remove();
             $("#tbStatistic tr:first").after(data);
-            //bmx2table();
             $("#statloading").hide();
             $("#updatatime").show();
         }
-    );
+    });
+
 }
 
 function updateinfo(s){
@@ -198,9 +208,11 @@ function AddHeaderIcon(s){
 
 
 function AutoHideTips(){
-    if($("p.hint:visible").length>0){
-        $("p.hint:visible").delay(10000).hide(1500,function(){});
-    }
+    $("p.hint:visible").each(function(i){
+        if ( !$(this).hasClass("hint_always") ){
+            $(this).delay(10000).hide(1500,function(){});
+        }
+    });
 }
 
 function ShowCSRFHint() {
@@ -229,18 +241,22 @@ $(document).ready(function(){
         }
     );
 
-    //斑马线化表格（老版本兼容代码）
-    bmx2table();
-
     if($('.SubMenu').find('span').length>0){
         $('.SubMenu').show();
     }
 
     //checkbox
-    $('input.checkbox').css("display","none");
     $('input.checkbox[value="1"]').after('<span class="imgcheck imgcheck-on"></span>');
     $('input.checkbox[value!="1"]').after('<span class="imgcheck"></span>');
-
+    $("input.checkbox").each(function(i){
+        $(this).next("span").css("display",$(this).css("display"));
+        $(this).next("span").attr("alt",$(this).attr("alt"));
+        $(this).next("span").attr("title",$(this).attr("title"));
+        if($(this).attr("disabled")=="disabled"){
+            $(this).next("span").addClass("imgcheck-disabled");
+        }
+    });
+    $('input.checkbox').css("display","none");
 
     $("body").on("click","span.imgcheck", function(){ChangeCheckValue(this)});
 
@@ -294,18 +310,15 @@ $s = ob_get_clean();
 $m = 'W/' . md5($s);
 
 header('Content-Type: application/x-javascript; charset=utf-8');
-if ($zbp->option['ZC_JS_304_ENABLE']) {
-    header('Etag: ' . $m);
-    if (isset($_SERVER["HTTP_IF_NONE_MATCH"]) && $_SERVER["HTTP_IF_NONE_MATCH"] == $m) {
+header('Etag: ' . $m);
+
+if (isset($_SERVER["HTTP_IF_NONE_MATCH"]) && $_SERVER["HTTP_IF_NONE_MATCH"] == $m) {
+    if (isset($zbp->option['ZC_JS_304_ENABLE']) && $zbp->option['ZC_JS_304_ENABLE']) {
         SetHttpStatusCode(304);
         die;
     }
 }
 
-$zbp->CheckGzip();
-$zbp->StartGzip();
-
 echo $s;
 
 die();
-?>

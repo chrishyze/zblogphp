@@ -19,6 +19,7 @@ if (!defined('ZBP_PATH')) {
  */
 class Upload extends Base
 {
+
     public function __construct()
     {
         global $zbp;
@@ -35,10 +36,20 @@ class Upload extends Base
     public function CheckExtName($extList = '')
     {
         global $zbp;
+        $fn = $this->Name;
+        if (stripos($fn, '.htaccess') !== false) {
+            return false;
+        }
+        if (stripos($fn, 'web.config') !== false) {
+            return false;
+        }
         $e = GetFileExt($this->Name);
         $extList = strtolower($extList);
         // 无论如何，禁止.php、.php5之类的文件的上传
         if (preg_match('/php/i', $e)) {
+            return false;
+        }
+        if (preg_match('/pht(ml)?(\d*)|phar/i', $e)) {
             return false;
         }
         if (trim($extList) == '') {
@@ -54,7 +65,7 @@ class Upload extends Base
     public function CheckSize()
     {
         global $zbp;
-        $n = 1024 * 1024 * (int) $zbp->option['ZC_UPLOAD_FILESIZE'];
+        $n = (1024 * 1024 * (int) $zbp->option['ZC_UPLOAD_FILESIZE']);
 
         return $n >= $this->Size;
     }
@@ -187,8 +198,11 @@ class Upload extends Base
             foreach ($GLOBALS['hooks']['Filter_Plugin_Upload_Dir'] as $fpname => &$fpsignal) {
                 return $fpname($this);
             }
-
-            return 'upload/' . date('Y', $this->PostTime) . '/' . date('m', $this->PostTime) . '/';
+            $dir = 'upload/' . date('Y', $this->PostTime) . '/' . date('m', $this->PostTime) . '/';
+            if ($zbp->option['ZC_UPLOAD_DIR_YEARMONTHDAY']) {
+                $dir .= date('d', $this->PostTime) . '/';
+            }
+            return $dir;
         }
         if ($name == 'FullFile') {
             return $zbp->usersdir . $this->Dir . $this->Name;
@@ -208,4 +222,5 @@ class Upload extends Base
 
         return parent::__get($name);
     }
+
 }

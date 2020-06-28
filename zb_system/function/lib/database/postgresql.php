@@ -8,22 +8,39 @@ if (!defined('ZBP_PATH')) {
  */
 class Database__PostgreSQL implements Database__Interface
 {
+
     public $type = 'postgresql';
+
     public $version = '';
+
+    public $error = array();
 
     /**
      * @var string|null 数据库名前缀
      */
     public $dbpre = null;
+
     private $db = null; //数据库连接
+
     /**
      * @var string|null 数据库名
      */
     public $dbname = null;
+
     /**
      * @var DbSql|null DbSql实例
      */
     public $sql = null;
+
+    /**
+     * @var 字符集
+     */
+    public $charset = 'utf8';
+
+    /**
+     * @var 字符排序
+     */
+    public $collate = null;
 
     /**
      * 构造函数，实例化$sql参数.
@@ -78,10 +95,33 @@ class Database__PostgreSQL implements Database__Interface
             $this->dbpre = $array[4];
             $this->db = $db_link;
             $v = pg_version($db_link);
-            $this->version = $v['client'];
+            if (isset($v['client'])) {
+                $this->version = $v['client'];
+            }
+            if (isset($v['server'])) {
+                $this->version = $v['server'];
+            }
 
             return true;
         }
+    }
+
+    /**
+     * @param string $dbpgsql_server
+     * @param string $dbpgsql_port
+     * @param string $dbpgsql_username
+     * @param string $dbpgsql_password
+     * @param string $dbpgsql_name
+     */
+    public function CreateDB($dbpgsql_server, $dbpgsql_port, $dbpgsql_username, $dbpgsql_password, $dbpgsql_name)
+    {
+        $s = "host={$dbpgsql_server} port={$dbpgsql_port} user={$dbpgsql_username} password={$dbpgsql_password} options='--client_encoding=UTF8'";
+        $this->db = pg_connect($s);
+        $this->dbname = $dbpgsql_name;
+
+        $r = @pg_query($this->db, $this->sql->Filter('CREATE DATABASE ' . $dbpgsql_name));
+        $this->LogsError();
+        return true;
     }
 
     /**
@@ -113,7 +153,8 @@ class Database__PostgreSQL implements Database__Interface
         foreach ($a as $s) {
             $s = trim($s);
             if ($s != '') {
-                pg_query($this->db, $this->sql->Filter($s));
+                $r = pg_query($this->db, $this->sql->Filter($s));
+                $this->LogsError();
             }
         }
     }
@@ -128,9 +169,16 @@ class Database__PostgreSQL implements Database__Interface
     public function Query($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        logs($this->sql->Filter($query));
-        $results = pg_query($this->db, $this->sql->Filter($query));
-        //if(mysql_errno())trigger_error(mysql_error($this->db),E_USER_NOTICE);
+        $results = @pg_query($this->db, $this->sql->Filter($query));
+        if (is_resource($results)) {
+            $st = pg_result_status($results);
+            if ($st == PGSQL_BAD_RESPONSE || $st == PGSQL_NONFATAL_ERROR || $st == PGSQL_FATAL_ERROR) {
+                trigger_error(pg_result_error($results), E_USER_NOTICE);
+            }
+        } else {
+            trigger_error(pg_last_error($this->db), E_USER_NOTICE);
+        }
+        $this->LogsError();
         $data = array();
         if (is_resource($results)) {
             while ($row = pg_fetch_assoc($results)) {
@@ -153,7 +201,9 @@ class Database__PostgreSQL implements Database__Interface
     public function Update($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return pg_query($this->db, $this->sql->Filter($query));
+        $r = pg_query($this->db, $this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -166,7 +216,9 @@ class Database__PostgreSQL implements Database__Interface
     public function Delete($query)
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
-        return pg_query($this->db, $this->sql->Filter($query));
+        $r = pg_query($this->db, $this->sql->Filter($query));
+        $this->LogsError();
+        return $r;
     }
 
     /**
@@ -180,9 +232,14 @@ class Database__PostgreSQL implements Database__Interface
     {
         //$query=str_replace('%pre%', $this->dbpre, $query);
         pg_query($this->db, $this->sql->Filter($query));
-        $seq = explode(' ', $query, 4);
-        $seq = $seq[2] . '_seq';
-        $r = pg_query('SELECT CURRVAL(\'' . $seq . '\')');
+        $this->LogsError();
+        $seq = explode(' ', $query);
+        $seq = $seq[3];
+        $seq = trim($seq);
+        //$seq = 'select lastval();';
+        $seq = "select currval('{$seq}_seq'::regclass)";
+
+        $r = pg_query($this->db, $seq);
         $id = pg_fetch_result($r, 0, 0);
 
         return (int) $id;
@@ -194,7 +251,7 @@ class Database__PostgreSQL implements Database__Interface
      * @param string $tablename 表名
      * @param array  $datainfo  表结构
      */
-    public function CreateTable($table, $datainfo)
+    public function CreateTable($table, $datainfo, $engine = null, $charset = null, $collate = null)
     {
         $this->QueryMulit($this->sql->CreateTable($table, $datainfo));
     }
@@ -235,4 +292,17 @@ class Database__PostgreSQL implements Database__Interface
             return false;
         }
     }
+
+    private function LogsError()
+    {
+        if (is_resource($r)) {
+            $st = pg_result_status($r);
+            if ($st == PGSQL_BAD_RESPONSE || $st == PGSQL_NONFATAL_ERROR || $st == PGSQL_FATAL_ERROR) {
+                $this->error[] = array($st, pg_result_error($r));
+            }
+        } else {
+            $this->error[] = array(PGSQL_BAD_RESPONSE, pg_last_error($this->db));
+        }
+    }
+
 }

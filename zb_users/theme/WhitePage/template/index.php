@@ -8,14 +8,16 @@
 			<h3 id="BlogSubTitle">{$subname}</h3>
 		</div>
 		<div id="divNavBar">
+<hr/>
 <ul>
 {module:navbar}
 </ul>
+<hr/>
 		</div>
 		<div id="divMain">
 {foreach $articles as $article}
 
-{if $article.IsTop}
+{if $article.TopType}
 {template:post-istop}
 {else}
 {template:post-multi}

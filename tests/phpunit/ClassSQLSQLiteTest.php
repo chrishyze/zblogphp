@@ -1,16 +1,16 @@
 <?php
 
-class ClassSQLSQLiteTest extends PHPUnit_Framework_TestCase
+class ClassSQL__SQLiteTest extends PHPUnit\Framework\TestCase
 {
     protected $backupGlobalsBlacklist = array('zbp');
     protected static $db = null;
 
-    public function setUp()
+    public function setUp(): void
     {
-        self::$db = new SQLSQLite($GLOBALS['zbp']->db);
+        self::$db = new SQL__SQLite($GLOBALS['zbp']->db);
     }
 
-    public function tearDown()
+    public function tearDown(): void
     {
         self::$db->reset();
         self::$db = null;
@@ -24,8 +24,8 @@ class ClassSQLSQLiteTest extends PHPUnit_Framework_TestCase
 
     public function testIndex()
     {
-        //self::$db->create('zbp_post')->index(array('indexname' => array('ddd', 'eee', 'eeee')));
-        //$this->assertEquals('CREATE INDEX indexname ( ddd , eee , eeee ) ;', self::$db->sql);
+        self::$db->create('zbp_post')->index(array('indexname' => array('ddd', 'eee', 'eeee')));
+        $this->assertEquals('CREATE INDEX zbp_post_indexname ON zbp_post ( ddd , eee , eeee )', self::$db->sql);
     }
 
     public function testCreateTable()
@@ -42,6 +42,6 @@ class ClassSQLSQLiteTest extends PHPUnit_Framework_TestCase
             's' => array('s', 'timestamp', '', ''),
         );
         self::$db->create('zbp_post')->data($tableData);
-        $this->assertEquals('CREATE TABLE zbp_post  ( a integer primary key autoincrement, b integer NOT NULL DEFAULT \'0\', i bit NOT NULL DEFAULT \'0\', j char() NOT NULL DEFAULT \'\', k varchar(250) NOT NULL DEFAULT \'\', p text NOT NULL DEFAULT \'\', q datetime NOT NULL, r float NOT NULL DEFAULT 0, s timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ); CREATE UNIQUE INDEX zbp_post_a  on zbp_post (a);', self::$db->sql);
+        $this->assertEquals('CREATE TABLE zbp_post  ( a integer primary key autoincrement, b integer NOT NULL DEFAULT \'0\', i bit NOT NULL DEFAULT \'0\', j char(250) NOT NULL DEFAULT \'\', k varchar(250) NOT NULL DEFAULT \'\', p text NOT NULL DEFAULT \'\', q datetime NOT NULL, r float NOT NULL DEFAULT 0, s timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ); CREATE UNIQUE INDEX zbp_post_a  on zbp_post (a);', self::$db->sql);
     }
 }

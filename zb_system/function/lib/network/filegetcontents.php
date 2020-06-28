@@ -8,26 +8,42 @@ if (!defined('ZBP_PATH')) {
  */
 class Network__Filegetcontents implements Network__Interface
 {
+
     private $readyState = 0; //状态
+
     private $responseBody = null; //返回的二进制
+
     private $responseStream = null; //返回的数据流
+
     private $responseText = ''; //返回的数据
+
     private $responseXML = null; //尝试把responseText格式化为XMLDom
+
     private $status = 0; //状态码
+
     private $statusText = ''; //状态码文本
+
     private $responseVersion = ''; //返回的HTTP版体
 
     private $option = array();
+
     private $url = '';
+
     private $postdata = array();
+
     private $httpheader = array();
+
     private $responseHeader = array();
+
     private $isgzip = false;
+
     private $maxredirs = 0;
+
     private $parsed_url = array();
 
-    private $__isBinary = false;
-    private $__boundary = '';
+    private $private_isBinary = false;
+
+    private $private_boundary = '';
 
     /**
      * @param $property_name
@@ -51,14 +67,15 @@ class Network__Filegetcontents implements Network__Interface
             $w = new DOMDocument();
 
             return $w->loadXML($this->responseText);
-        } elseif (strtolower($property_name) == 'scheme' ||
-            strtolower($property_name) == 'host' ||
-            strtolower($property_name) == 'port' ||
-            strtolower($property_name) == 'user' ||
-            strtolower($property_name) == 'pass' ||
-            strtolower($property_name) == 'path' ||
-            strtolower($property_name) == 'query' ||
-            strtolower($property_name) == 'fragment') {
+        } elseif (strtolower($property_name) == 'scheme'
+            || strtolower($property_name) == 'host'
+            || strtolower($property_name) == 'port'
+            || strtolower($property_name) == 'user'
+            || strtolower($property_name) == 'pass'
+            || strtolower($property_name) == 'path'
+            || strtolower($property_name) == 'query'
+            || strtolower($property_name) == 'fragment'
+        ) {
             if (isset($this->parsed_url[strtolower($property_name)])) {
                 return $this->parsed_url[strtolower($property_name)];
             } else {
@@ -132,7 +149,7 @@ class Network__Filegetcontents implements Network__Interface
             throw new Exception('URL Syntax Error!');
         } else {
             if ($bstrUser != '') {
-                $bstrUrl = substr($bstrUrl, 0, strpos($bstrUrl, ':')) . '://' . $bstrUser . ':' . $bstrPassword . '@' . substr($bstrUrl, strpos($bstrUrl, '/') + 2);
+                $bstrUrl = substr($bstrUrl, 0, strpos($bstrUrl, ':')) . '://' . $bstrUser . ':' . $bstrPassword . '@' . substr($bstrUrl, (strpos($bstrUrl, '/') + 2));
             }
             $this->url = $bstrUrl;
             if (!isset($this->parsed_url['port'])) {
@@ -158,14 +175,20 @@ class Network__Filegetcontents implements Network__Interface
         }
 
         if ($this->option['method'] == 'POST') {
+            if (is_array($varBody) && count($this->postdata) > 0) {
+                foreach ($varBody as $key => $value) {
+                    $this->add_postdata($key, $value);
+                }
+                $data = '';
+            }
             if ($data == '') {
-                $data = $this->__buildPostData(); //http_build_query($this->postdata);
+                $data = $this->private_buildPostData(); //http_build_query($this->postdata);
             }
             $this->option['content'] = $data;
 
             if (!isset($this->httpheader['Content-Type'])) {
-                if ($this->__isBinary) {
-                    $this->httpheader['Content-Type'] = 'Content-Type:  multipart/form-data; boundary=' . $this->__boundary;
+                if ($this->private_isBinary) {
+                    $this->httpheader['Content-Type'] = 'Content-Type:  multipart/form-data; boundary=' . $this->private_boundary;
                 } else {
                     $this->httpheader['Content-Type'] = 'Content-Type: application/x-www-form-urlencoded';
                 }
@@ -179,7 +202,7 @@ class Network__Filegetcontents implements Network__Interface
         if ($this->maxredirs > 0) {
             $this->option['follow_location'] = true;
             //补一个数字 要大于1才跳转
-            $this->option['max_redirects'] = $this->maxredirs + 1;
+            $this->option['max_redirects'] = ($this->maxredirs + 1);
         } else {
             $this->option['follow_location'] = 0;
             $this->option['max_redirects'] = 0;
@@ -191,6 +214,9 @@ class Network__Filegetcontents implements Network__Interface
         $this->responseHeader = $http_response_header;
         ZBlogException::ResumeErrorHook();
 
+        if (!is_array($this->responseHeader)) {
+            return;
+        }
         foreach ($this->responseHeader as $key => $value) {
             if (strpos($value, 'HTTP/') === 0) {
                 if (isset($this->responseHeader[$key])) {
@@ -251,7 +277,7 @@ class Network__Filegetcontents implements Network__Interface
      */
     public function addBinary($name, $entity, $filename = null, $mime = '')
     {
-        $this->__isBinary = true;
+        $this->private_isBinary = true;
         $return = array();
 
         $return['type'] = 'binary';
@@ -297,9 +323,9 @@ class Network__Filegetcontents implements Network__Interface
     /**
      * @return string
      */
-    private function __buildPostData()
+    private function private_buildPostData()
     {
-        if (!$this->__isBinary) {
+        if (!$this->private_isBinary) {
             $array = array();
             foreach ($this->postdata as $name => $value) {
                 $array[$name] = $value['data'];
@@ -307,8 +333,8 @@ class Network__Filegetcontents implements Network__Interface
 
             return http_build_query($array);
         }
-        $this->__buildBoundary();
-        $boundary = $this->__boundary;
+        $this->private_buildBoundary();
+        $boundary = $this->private_boundary;
         $data = '';
 
         foreach ($this->postdata as $name => $value) {
@@ -337,11 +363,11 @@ class Network__Filegetcontents implements Network__Interface
     /**
      * Build Boundary.
      */
-    private function __buildBoundary()
+    private function private_buildBoundary()
     {
         $boundary = '----ZBLOGPHPBOUNDARY';
         $boundary .= substr(md5(time()), 8, 16);
-        $this->__boundary = $boundary;
+        $this->private_boundary = $boundary;
     }
 
     private function reinit()
@@ -355,8 +381,8 @@ class Network__Filegetcontents implements Network__Interface
         $this->status = 0; //状态码
         $this->statusText = ''; //状态码文本
 
-        $this->__isBinary = false;
-        $this->__boundary = '';
+        $this->private_isBinary = false;
+        $this->private_boundary = '';
 
         $this->option = array();
         $this->url = '';
@@ -384,4 +410,5 @@ class Network__Filegetcontents implements Network__Interface
     {
         $this->maxredirs = $n;
     }
+
 }

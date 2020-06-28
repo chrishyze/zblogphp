@@ -13,10 +13,11 @@ if (!defined('ZBP_PATH')) {
  */
 class Metas
 {
+
     /**
      * @var array 存储Metas相应数值的数组
      */
-    private $_data = array();
+    private $p_data = array();
 
     /**
      * @param string $name key名
@@ -24,7 +25,7 @@ class Metas
      */
     public function __set($name, $value)
     {
-        $this->_data[$name] = $value;
+        $this->p_data[$name] = $value;
     }
 
     /**
@@ -34,11 +35,11 @@ class Metas
      */
     public function __get($name)
     {
-        if (!isset($this->_data[$name])) {
+        if (!isset($this->p_data[$name])) {
             return;
         }
 
-        return $this->_data[$name];
+        return $this->p_data[$name];
     }
 
     /**
@@ -48,7 +49,7 @@ class Metas
      */
     public function __isset($name)
     {
-        return isset($this->_data[$name]);
+        return isset($this->p_data[$name]);
     }
 
     /**
@@ -56,7 +57,7 @@ class Metas
      */
     public function __unset($name)
     {
-        unset($this->_data[$name]);
+        unset($this->p_data[$name]);
     }
 
     /**
@@ -70,7 +71,7 @@ class Metas
     {
         $m = new self();
         if (is_array($a)) {
-            $m->_data = $a;
+            $m->p_data = $a;
         }
 
         return $m;
@@ -83,7 +84,7 @@ class Metas
      */
     public function GetData()
     {
-        return $this->_data;
+        return $this->p_data;
     }
 
     /**
@@ -123,7 +124,7 @@ class Metas
      */
     public function HasKey($name)
     {
-        return array_key_exists($name, $this->_data);
+        return array_key_exists($name, $this->p_data);
     }
 
     /**
@@ -133,7 +134,7 @@ class Metas
      */
     public function CountItem()
     {
-        return count($this->_data);
+        return count($this->p_data);
     }
 
     /**
@@ -143,7 +144,7 @@ class Metas
      */
     public function Del($name)
     {
-        unset($this->_data[$name]);
+        unset($this->p_data[$name]);
     }
 
     /**
@@ -153,11 +154,11 @@ class Metas
      */
     public function Serialize()
     {
-        if (count($this->_data) == 0) {
+        if (count($this->p_data) == 0) {
             return '';
         }
 
-        $data = $this->_data;
+        $data = $this->p_data;
         foreach ($data as $key => $value) {
             if (is_string($value)) {
                 $data[$key] = self::ReplaceHost2Tag($value);
@@ -182,26 +183,27 @@ class Metas
         }
 
         //if(strpos($s,'{')===0){
-        //$this->_data=json_decode($s,true);
+        //$this->p_data=json_decode($s,true);
         //}else{
-        $this->_data = @unserialize($s);
+        $this->p_data = @unserialize($s);
         //}
-        if (is_array($this->_data)) {
-            if (count($this->_data) == 0) {
+        if (is_array($this->p_data)) {
+            if (count($this->p_data) == 0) {
                 return true;
             }
 
-            foreach ($this->_data as $key => $value) {
+            foreach ($this->p_data as $key => $value) {
                 if (is_string($value)) {
-                    $this->_data[$key] = self::ReplaceTag2Host($value);
+                    $this->p_data[$key] = self::ReplaceTag2Host($value);
                 }
             }
         } else {
-            $this->_data = array();
+            $this->p_data = array();
 
             return false;
         }
 
         return true;
     }
+
 }

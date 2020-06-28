@@ -12,14 +12,17 @@ if (!defined('ZBP_PATH')) {
  */
 class DbSql
 {
+
     /**
      * @var Database__Interface 数据库连接实例
      */
     private $db = null;
+
     /**
      * @var null|string 数据库类型名称
      */
     private $dbclass = null;
+
     /**
      * @param object $db
      */
@@ -86,16 +89,24 @@ class DbSql
      *
      * @param string $table
      * @param array  $datainfo
-     * @param null   $engine
+     * @param string $engine
+     * @param string $charset
+     * @param string $collate
      *
      * @return string
      */
-    public function CreateTable($table, $datainfo, $engine = null)
+    public function CreateTable($table, $datainfo, $engine = null, $charset = null, $collate = null)
     {
         $sql = $this->get();
         $sql->create($table)->data($datainfo);
-        if (!is_null($engine)) {
+        if (trim($engine) != '') {
             $sql->option(array('engine' => $engine));
+        }
+        if (trim($charset) != '') {
+            $sql->option(array('charset' => $charset));
+        }
+        if (trim($collate) != '') {
+            $sql->option(array('collate' => $collate));
         }
 
         return $sql->sql;
@@ -121,31 +132,38 @@ class DbSql
 
         $sql = $this->get()->select($table)->option($option)->where($where)->orderBy($order)->limit($limit);
 
-        if (isset($option['select2count'])) {
-            foreach ($select as $key => $value) {
-                if (count($value) > 2) {
-                    $sql->count(array_slice($value, 1));
-                } else {
-                    $sql->count($value);
-                }
+        //定义出key array
+        $array = array('COUNT', 'MIN', 'MAX', 'SUM', 'AVG', 'SELECTANY', 'FROM', 'INNERJOIN', 'LEFTJOIN', 'RIGHTJOIN', 'JOIN', 'FULLJOIN', 'USEINDEX', 'FORCEINDEX', 'IGNOREINDEX', 'ON', 'DISTINCT', 'RANDOM', 'COLUMN', 'GROUPBY', 'HAVING', 'WHERE', 'ORDER', 'LIMIT');
+        foreach ($array as $key => $keyword) {
+            if (isset($option[strtolower($keyword)])) {
+                $args = array($option[strtolower($keyword)]);
+                call_user_func_array(array($sql, $keyword), $args);
             }
-        } else {
-            if (!is_array($select)) {
-                $select = array($select);
-            }
-            call_user_func_array(array($sql, 'column'), $select);
         }
 
-        if (!empty($option)) {
-            if (isset($option['pagebar'])) {
-                if ($option['pagebar']->Count === null) {
-                    $s2 = $this->Count($table, array(array('*', 'num')), $where);
-                    $option['pagebar']->Count = GetValueInArrayByCurrent($this->db->Query($s2), 'num');
+        if (isset($option['pagebar'])) {
+            if ($option['pagebar']->Count === null) {
+                $sqlpb = $this->get()->select($table)->count(array('*' => 'num'))->where($where)->option($option);
+                foreach (array('FROM', 'INNERJOIN', 'LEFTJOIN', 'RIGHTJOIN', 'JOIN', 'FULLJOIN', 'USEINDEX', 'FORCEINDEX', 'IGNOREINDEX', 'ON', 'WHERE', 'GROUPBY', 'HAVING') as $key => $keyword) {
+                    if (isset($option[strtolower($keyword)])) {
+                        $args = array($option[strtolower($keyword)]);
+                        call_user_func_array(array($sqlpb, $keyword), $args);
+                    }
                 }
-                $option['pagebar']->Count = (int) $option['pagebar']->Count;
-                $option['pagebar']->make();
+                $query = $sqlpb->query;
+                $option['pagebar']->Count = GetValueInArrayByCurrent($query, 'num');
+            }
+            $option['pagebar']->Count = (int) $option['pagebar']->Count;
+            $option['pagebar']->make();
+        }
+
+        if (!is_array($select)) {
+            if (!empty($select)) {
+                $select = array(trim($select));
             }
         }
+        $sql->column($select);
+
         $sql = $sql->sql;
 
         return $sql;
@@ -155,19 +173,31 @@ class DbSql
      * 构造计数语句.
      *
      * @param string $table
-     * @param mixed  $count
+     * @param mixed  $count 不只是count,还有sum,avg,min,max
      * @param mixed  $where
      * @param null   $option
      *
      * @return string 返回构造的语句
      */
-    public function Count($table, $count, $where = null, $option = null)
+    public function Count($table, $countofnum, $where = null, $option = null)
     {
-        if (!is_array($option)) {
-            $option = array('select2count' => true);
+        $sql = $this->get()->select($table)->option($option)->where($where);
+        if (count($countofnum) == 1) {
+            $countofnum = $countofnum[0];
+        }
+        //为了兼容以前的做法才写了一堆的语句
+        if (count($countofnum) == 3) { //array('sum','*','asname')
+            call_user_func_array(array($sql, strtolower($countofnum[0])), array(array($countofnum[1] => $countofnum[2])));
+        }
+        if (count($countofnum) == 2) {
+            if (in_array(strtoupper($countofnum[0]), array('COUNT', 'MIN', 'MAX', 'SUM', 'AVG'))) { //array('AVG','*')
+                call_user_func_array(array($sql, $countofnum[0]), array($countofnum[1]));
+            } else { //array('*','asname')
+                call_user_func_array(array($sql, 'count'), array(array($countofnum[0] => $countofnum[1])));
+            }
         }
 
-        return $this->Select($table, $count, $where, null, null, $option);
+        return $sql->sql;
     }
 
     /**
@@ -221,7 +251,7 @@ class DbSql
      */
     public function Filter($sql)
     {
-        $_SERVER['_query_count'] = $_SERVER['_query_count'] + 1;
+        $_SERVER['_query_count'] = ($_SERVER['_query_count'] + 1);
 
         foreach ($GLOBALS['hooks']['Filter_Plugin_DbSql_Filter'] as $fpname => &$fpsignal) {
             $fpname($sql);
@@ -237,36 +267,36 @@ class DbSql
      *
      * @return mixed
      */
-    private $_explort_db = null;
+    private $pri_explort_db = null;
 
     public function Export($table, $keyvalue, $type = 'mysql')
     {
-        if ($type == 'mysql' && $this->_explort_db === null) {
-            $this->_explort_db = new Database_MySQL();
+        if ($type == 'mysql' && $this->pri_explort_db === null) {
+            $this->pri_explort_db = new Database_MySQL();
         }
 
-        if ($type == 'mysqli' && $this->_explort_db === null) {
-            $this->_explort_db = new Database_MySQLi();
+        if ($type == 'mysqli' && $this->pri_explort_db === null) {
+            $this->pri_explort_db = new Database_MySQLi();
         }
 
-        if ($type == 'pdo_mysql' && $this->_explort_db === null) {
-            $this->_explort_db = new Database_PDOMySQL();
+        if ($type == 'pdo_mysql' && $this->pri_explort_db === null) {
+            $this->pri_explort_db = new Database_PDOMySQL();
         }
 
-        if ($type == 'sqlite' && $this->_explort_db === null) {
-            $this->_explort_db = new Database_SQLite();
+        if ($type == 'sqlite' && $this->pri_explort_db === null) {
+            $this->pri_explort_db = new Database_SQLite();
         }
 
-        if ($type == 'sqlite3' && $this->_explort_db === null) {
-            $this->_explort_db = new Database_SQLite();
+        if ($type == 'sqlite3' && $this->pri_explort_db === null) {
+            $this->pri_explort_db = new Database_SQLite();
         }
 
-        if ($type == 'pdo_sqlite' && $this->_explort_db === null) {
-            $this->_explort_db = new Database_SQLite3();
+        if ($type == 'pdo_sqlite' && $this->pri_explort_db === null) {
+            $this->pri_explort_db = new Database_SQLite3();
         }
 
-        if ($this->_explort_db === null) {
-            $this->_explort_db = new Database_MySQL();
+        if ($this->pri_explort_db === null) {
+            $this->pri_explort_db = new Database_MySQL();
         }
 
         $sql = "INSERT INTO $table ";
@@ -289,7 +319,7 @@ class DbSql
                 continue;
             }
 
-            $v = $this->_explort_db->EscapeString($v);
+            $v = $this->pri_explort_db->EscapeString($v);
             $sql .= $comma . "'$v'";
             $comma = ',';
         }
@@ -297,4 +327,14 @@ class DbSql
 
         return $sql . ";\r\n";
     }
+
+    //command = 'begin','commit','rollback'
+    public function Transaction($command)
+    {
+        $command = strtoupper(trim($command));
+        if ($command == 'BEGIN' || $command == 'COMMIT' || $command == 'ROLLBACK') {
+            return $command;
+        }
+    }
+
 }

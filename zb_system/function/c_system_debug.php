@@ -1,22 +1,18 @@
 <?php
+/**
+ * 错误调试.
+ */
 
 if (!defined('ZBP_PATH')) {
     exit('Access denied');
 }
-/**
- * 错误调试.
- *
- * @copyright (C) RainbowSoft Studio
- */
 
 /**
- * 显示全局变量.
+ * 显示全局变量.(下版转到debug页,虽然还没有做，但加了todo检查会报错)
  *
  * @return mixed
  *
  * @since 1.3.140614
- *
- * @todo 下版转到debug页
  */
 function Debug_PrintGlobals()
 {
@@ -25,17 +21,15 @@ function Debug_PrintGlobals()
         $a[] = $n;
     }
 
-    return print_r($a, true);
+    return call_user_func('print_r', $a, true);
 }
 
 /**
- *  打印全局Include文件.
+ *  打印全局Include文件.(下版转到debug页,虽然还没有做，但加了todo检查会报错)
  *
  * @return string
  *
  * @since 1.3
- *
- * @todo 下版转到debug页
  */
 function Debug_PrintIncludefiles()
 {
@@ -44,17 +38,15 @@ function Debug_PrintIncludefiles()
         $a[] = $v;
     }
 
-    return print_r($a, true);
+    return call_user_func('print_r', $a, true);
 }
 
 /**
- *  打印全局自定义常量.
+ *  打印全局自定义常量.(下版转到debug页,虽然还没有做，但加了todo检查会报错)
  *
  * @return string
  *
  * @since 1.3
- *
- * @todo 下版转到debug页
  */
 function Debug_PrintConstants()
 {
@@ -63,7 +55,7 @@ function Debug_PrintConstants()
         $a = $a['user'];
     }
 
-    return print_r($a, true);
+    return call_user_func('print_r', $a, true);
 }
 
 /**
@@ -137,6 +129,7 @@ function Debug_IgnoreError($errno)
  */
 function Debug_Error_Handler($errno, $errstr, $errfile, $errline)
 {
+    ZBlogException::$errors_msg[] = array($errno, $errstr, $errfile, $errline);
     if (ZBlogException::$disabled == true) {
         return true;
     }
@@ -145,19 +138,17 @@ function Debug_Error_Handler($errno, $errstr, $errfile, $errline)
         $fpreturn = $fpname('Error', array($errno, $errstr, $errfile, $errline));
     }
 
-    $_SERVER['_error_count'] = $_SERVER['_error_count'] + 1;
+    $_SERVER['_error_count'] = ($_SERVER['_error_count'] + 1);
 
     if (ZBlogException::$islogerror == true) {
         Logs(var_export(array('Error', $errno, $errstr, $errfile, $errline), true), true);
     }
 
-    if (is_readable($errfile)) {
-        $a = array_slice(file($errfile), max(0, $errline - 1), 1, true);
-        $s = reset($a);
-        if (strpos($s, '@') !== false) {
-            return true;
-        }
+    //@符号的错误抑制功能的实现
+    if (error_reporting() == 0) {
+        return true;
     }
+
     if (Debug_IgnoreError($errno)) {
         return true;
     }
@@ -178,6 +169,7 @@ function Debug_Error_Handler($errno, $errstr, $errfile, $errline)
  */
 function Debug_Exception_Handler($exception)
 {
+    ZBlogException::$errors_msg[] = array($exception->getCode(), $exception->getMessage(), $exception->getFile(), $exception->getLine());
     if (ZBlogException::$disabled == true) {
         return true;
     }
@@ -185,13 +177,19 @@ function Debug_Exception_Handler($exception)
         $fpreturn = $fpname('Exception', $exception);
     }
 
-    $_SERVER['_error_count'] = $_SERVER['_error_count'] + 1;
+    $_SERVER['_error_count'] = ($_SERVER['_error_count'] + 1);
 
     if (ZBlogException::$islogerror) {
-        Logs(var_export(
-            array('Exception',
-                $exception->getMessage(), $exception->getCode(), $exception->getFile(), $exception->getLine(),
-            ), true), true);
+        Logs(
+            var_export(
+                array(
+                    'Exception',
+                    $exception->getMessage(), $exception->getCode(), $exception->getFile(), $exception->getLine(),
+                ),
+                true
+            ),
+            true
+        );
     }
 
     $zbe = ZBlogException::GetInstance();
@@ -209,6 +207,7 @@ function Debug_Exception_Handler($exception)
 function Debug_Shutdown_Handler()
 {
     if ($error = error_get_last()) {
+        ZBlogException::$errors_msg[] = array($error['type'], $error['message'], $error['file'], $error['line']);
         if (ZBlogException::$disabled == true) {
             return true;
         }
@@ -217,7 +216,7 @@ function Debug_Shutdown_Handler()
             $fpreturn = $fpname('Shutdown', $error);
         }
 
-        $_SERVER['_error_count'] = $_SERVER['_error_count'] + 1;
+        $_SERVER['_error_count'] = ($_SERVER['_error_count'] + 1);
 
         if (ZBlogException::$islogerror) {
             Logs(var_export(array('Shutdown', $error['type'], $error['message'], $error['file'], $error['line']), true), true);
@@ -235,6 +234,9 @@ function Debug_Shutdown_Handler()
     return true;
 }
 
+/**
+ * Debug DoNothing
+ */
 function Debug_DoNothing()
 {
     return false;
@@ -245,19 +247,80 @@ function Debug_DoNothing()
  */
 class ZBlogException
 {
-    private static $_zbe = null;
+
+    /**
+     * 静态zbe
+     */
+    private static $private_zbe = null;
+
+    /**
+     * 静态disabled
+     */
     public static $disabled = false;
+
+    /**
+     * 静态isstrict
+     */
     public static $isstrict = false;
+
+    /**
+     * 静态iswarning
+     */
     public static $iswarning = true;
+
+    /**
+     * 静态error_id
+     */
     public static $error_id = 0;
+
+    /**
+     * 静态error_file
+     */
     public static $error_file = null;
+
+    /**
+     * 静态error_line
+     */
     public static $error_line = null;
+
+    /**
+     * 静态islogerror
+     */
     public static $islogerror = false;
+
+    /**
+     * 静态errors_msg
+     */
+    public static $errors_msg = array();
+
+    /**
+     * 类型
+     */
     public $type;
+
+    /**
+     * 消息
+     */
     public $message;
+
+    /**
+     * 完全消息
+     */
     public $messagefull;
+
+    /**
+     * 文件
+     */
     public $file;
+
+    /**
+     * 行号
+     */
     public $line;
+
+    /**
+     * 错误数组
+     */
     public $errarray = array();
 
     /**
@@ -311,11 +374,11 @@ class ZBlogException
      */
     public static function GetInstance()
     {
-        if (!isset(self::$_zbe)) {
-            self::$_zbe = new self();
+        if (!isset(self::$private_zbe)) {
+            self::$private_zbe = new self();
         }
 
-        return self::$_zbe;
+        return self::$private_zbe;
     }
 
     /**
@@ -374,28 +437,42 @@ class ZBlogException
     }
 
     /**
-     * 恢复错误调度.
+     * 禁用严格模式.
      */
     public static function DisableStrict()
     {
         self::$isstrict = false;
     }
 
+    /**
+     * 启用严格模式.
+     */
     public static function EnableStrict()
     {
         self::$isstrict = true;
     }
 
+    /**
+     * 禁用警告模式.
+     */
     public static function DisableWarning()
     {
         self::$iswarning = false;
     }
 
+    /**
+     * 启用警告模式.
+     */
     public static function EnableWarning()
     {
         self::$iswarning = true;
     }
 
+    /**
+     * Trace记录错误.
+     *
+     * @param string $s
+     */
     public static function Trace($s)
     {
         Logs($s);
@@ -474,7 +551,7 @@ class ZBlogException
             }
         }
 
-        require dirname(__FILE__) . '/../defend/error.php';
+        include dirname(__FILE__) . '/../defend/error.php';
         RunTime();
 
         /*
@@ -503,7 +580,7 @@ class ZBlogException
             return array();
         }
 
-        $aFile = array_slice(file($file), max(0, $line - 5), 10, true);
+        $aFile = array_slice(file($file), max(0, ($line - 5)), 10, true);
         foreach ($aFile as &$sData) {
             //&$ = ByRef
             $sData = htmlspecialchars($sData);
@@ -551,4 +628,5 @@ class ZBlogException
 
         return $result;
     }
+
 }

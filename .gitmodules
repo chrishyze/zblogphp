@@ -1,0 +1,15 @@
+[submodule "Editormd"]
+	path = zb_users/plugin/Editormd
+	url = git@gitee.com:chrishyze/zbp-editormd.git
+[submodule "NeteaseCloudMusic"]
+	path = zb_users/plugin/NeteaseCloudMusic
+	url = git@gitee.com:chrishyze/zbp_neteasecloudmusic.git
+[submodule "Neditor"]
+	path = zb_users/plugin/Neditor
+	url = git@gitee.com:chrishyze/zbp_neditor.git
+[submodule "IframeVO"]
+	path = zb_users/plugin/IframeVO
+	url = git@gitee.com:chrishyze/zbp_iframevo.git
+[submodule "MultiThemes"]
+	path = zb_users/plugin/MultiThemes
+	url = git@gitee.com:chrishyze/zbp_multithemes.git
